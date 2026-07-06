@@ -11,7 +11,7 @@ const ctxStub = new Proxy({}, { get: (t, k) => {
 }, set: () => true });
 const listeners = {};
 global.window = global;
-global.document = { getElementById: () => ({ getContext: () => ctxStub, style: {}, width: 0, height: 0 }) };
+global.document = { getElementById: () => ({ getContext: () => ctxStub, style: {}, width: 0, height: 0, addEventListener(){} }) };
 global.addEventListener = (ev, fn) => { (listeners[ev] = listeners[ev] || []).push(fn); };
 global.localStorage = { _d:{}, getItem(k){return this._d[k]||null}, setItem(k,v){this._d[k]=v} };
 global.innerWidth = 1200; global.innerHeight = 800;
@@ -231,6 +231,15 @@ const pausedPos = T.G.pos; run(1);
 check('esc pauses (world frozen)', T.G.state === 'pause' && T.G.pos === pausedPos);
 fire('keydown','Escape'); fire('keyup','Escape');
 check('esc resumes', T.G.state === 'play');
+
+// dispatcher scheme: autopilot drives and opens the doors itself
+T.reset(); fire('keydown','Digit3'); fire('keyup','Digit3');
+check('dispatch scheme starts via 3', T.G.state === 'play' && T.G.scheme === 'dispatch');
+T.G.spawnT = 999; T.G.pax = [];
+T.G.autoTarget = 3;
+run(6);
+check('autopilot arrives flush and opens doors', Math.abs(T.G.pos - 3) < 0.01 && T.G.doorOpen === true);
+T.G.scheme = 'classic';
 
 // draw() must not throw in any state
 try {

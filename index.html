@@ -134,6 +134,8 @@ function reset(){
     state:'title', t:0,
     pos:0, vel:0,               // pos in floor units, 0 = lobby
     floors:5, cap:3, base:0, justDug:false,
+    scheme:(G&&G.scheme)||'classic',            // 'classic' | 'wheel' | 'dispatch' — survives restarts
+    autoTarget:null,
     up:{}, offers:null, pickSel:0, graceT:0, silk:false, flawless:0,
     transferDur:0.45,
     doorT:0, doorOpen:false,    // doorT 0..1 openness
@@ -329,7 +331,15 @@ const keys={};
 addEventListener('keydown',e=>{
   if(['ArrowUp','ArrowDown','Space'].includes(e.code)) e.preventDefault();
   if(keys[e.code]) return; keys[e.code]=true; ac();
-  if(G.state==='title'&&(e.code==='Space'||e.code==='Enter')){ G.state='play'; say('GOOD MORNING, OPERATOR',2.5); return; }
+  if(G.state==='title'){
+    if(e.code==='Digit1') G.scheme='classic';
+    else if(e.code==='Digit2') G.scheme='wheel';
+    else if(e.code==='Digit3') G.scheme='dispatch';
+    else if(e.code!=='Space'&&e.code!=='Enter') return;
+    G.state='play';
+    say('GOOD MORNING, OPERATOR'+(G.scheme!=='classic'?'  ·  '+(G.scheme==='wheel'?'WHEEL':'DISPATCH')+' CONTROLS':''),2.5);
+    return;
+  }
   if(G.state==='over'&&e.code==='Enter'){ reset(); G.state='play'; return; }
   if(e.code==='Escape'){
     if(G.state==='play'){ G.state='pause'; for(const k in keys) keys[k]=false; return; }
@@ -348,6 +358,33 @@ addEventListener('keydown',e=>{
 });
 addEventListener('keyup',e=>keys[e.code]=false);
 
+/* scroll-wheel lever: each notch is a shove; momentum still rules */
+cv.addEventListener('wheel',e=>{
+  if(G.scheme!=='wheel'||G.state!=='play') return;
+  e.preventDefault(); ac();
+  if(G.doorT>0.02) return;                              // interlock holds
+  G.vel+=-Math.sign(e.deltaY)*0.38;
+},{passive:false});
+
+/* dispatcher: click a floor (or the minimap) and the car goes */
+cv.addEventListener('mousedown',e=>{
+  if(G.scheme!=='dispatch'||G.state!=='play') return;
+  ac();
+  const r=cv.getBoundingClientRect();
+  const mx=(e.clientX-r.left)/r.width*VW, my=(e.clientY-r.top)/r.height*VH;
+  let f;
+  if(mx>VW-34){                                          // minimap strip
+    const mh=VH-120,my0=64,mlo=-G.base,mspan=Math.max(1,G.floors-1-mlo);
+    f=Math.round(((my0+mh-my)/mh)*mspan+mlo);
+  } else {
+    f=Math.floor(((VH-50-my)+G.camY)/FLOOR_H);
+  }
+  if(f>=-G.base&&f<G.floors){
+    G.autoTarget=f;
+    if(G.doorOpen&&!G.transfer) toggleGate();            // close up and go
+  }
+});
+
 function flushFloor(){
   const f=Math.round(G.pos);
   if(f<-G.base||f>=G.floors) return -99;
@@ -364,7 +401,7 @@ function toggleGate(){
   } else {
     const f=flushFloor();
     if(f===-99){ S.denied(); say('LINE UP THE CAR, OPERATOR!',1.2); return; }
-    G.silk=Math.abs(G.pos-f)<0.035;                    // first-touch perfect stop
+    G.silk=Math.abs(G.pos-f)<0.035&&G.scheme!=='dispatch'; // no silk bonus when the car parks itself
     G.doorOpen=true; G.vel=0; G.pos=f; S.gate(true);
     if(G.silk){ S.ding(3); say('SILK STOP — SWIFT SERVICE!',1); }
     if(f>G.maxFloor) G.maxFloor=f;
@@ -379,11 +416,29 @@ function update(dt){
 
   /* --- lever & physics --- */
   const locked=G.doorT>0.02;
-  let input=0;
-  if(!locked){ if(keys.ArrowUp||keys.KeyW)input+=1; if(keys.ArrowDown||keys.KeyS)input-=1; }
   const load=riders().length/Math.max(1,G.cap);                 // counterweight pulls harder when loaded
   const cw=1+0.15*upLv('counter')*load;
   const ACC=3.4*(1+0.10*upLv('speed'))*cw, MAX=2.7*(1+0.12*upLv('speed'))*cw, DRAG=0.85;
+  let input=0;
+  if(!locked){
+    if(G.scheme==='dispatch'){
+      // autopilot: the routing IS the game — car drives itself to the clicked floor
+      if(G.autoTarget!==null){
+        const d=G.autoTarget-G.pos, ad=Math.abs(d), dir=Math.sign(d);
+        const bd=(G.vel*G.vel)/(2*ACC);
+        if(ad<0.02&&Math.abs(G.vel)<0.15){
+          G.pos=G.autoTarget; G.vel=0; const f=G.autoTarget; G.autoTarget=null;
+          G.silk=false; G.doorOpen=true; G.doorT=Math.max(G.doorT,0.02); S.gate(true);   // doors open themselves
+          if(f>G.maxFloor) G.maxFloor=f;
+        }
+        else if(Math.sign(G.vel)===dir&&bd>=ad-0.02) input=-dir;
+        else if(Math.abs(G.vel)<(ad<0.5?0.55:MAX)) input=dir;
+      }
+    } else {
+      if(keys.ArrowUp||keys.KeyW)input+=1;
+      if(keys.ArrowDown||keys.KeyS)input-=1;
+    }
+  }
   G.vel+=input*ACC*dt;
   if(!input) G.vel*=Math.exp(-DRAG*dt);          // coast — momentum is the game
   if(!input && Math.abs(G.vel)<0.04) G.vel=0;
@@ -839,6 +894,11 @@ function drawBuilding(){
   px(BX-6,sy(G.floors*FLOOR_H)-6,6,wallBot-sy(G.floors*FLOOR_H)+6,'#1b1512');
   px(BX-6,sy(G.floors*FLOOR_H)-6,2,wallBot-sy(G.floors*FLOOR_H)+6,'#2a221c');
   drawShaft();
+  // dispatcher target marker: pulsing chevron beside the shaft
+  if(G.scheme==='dispatch'&&G.autoTarget!==null){
+    const tym=sy(G.autoTarget*FLOOR_H), pulse=Math.floor(G.t*4)%2;
+    px(SHX-12-pulse*2,tym-14,8,3,P.warn); px(SHX-10-pulse*2,tym-11,6,3,P.warn); px(SHX-8-pulse*2,tym-8,4,3,P.warn);
+  }
   // street flanks the building; below it, bedrock wraps the cellars
   const gy=sy(0);
   if(gy<VH){
@@ -960,7 +1020,7 @@ function drawOverlay(title,lines){
   lines.forEach((l,i)=>ctx.fillText(l,VW/2,136+i*20));
   if(Math.floor(G.t*2)%2===0){
     ctx.fillStyle=P.brass; ctx.font='12px monospace';
-    ctx.fillText(G.state==='title'?'— PRESS SPACE TO CLOCK IN —':
+    ctx.fillText(G.state==='title'?'— PRESS 1, 2 OR 3 TO CLOCK IN —':
                  G.state==='pause'?'— PRESS ESC TO RESUME —':'— PRESS ENTER FOR A NEW SHIFT —',VW/2,VH-66);
   }
 }
@@ -1014,15 +1074,15 @@ function draw(){
   }
   else if(G.state==='title'){
     drawOverlay('THE GRAND ASCENT',[
-      'You are the lift. The lift is you.',
+      'Deliver guests before they boil over — 3 walk-outs and',
+      'the management lets you go. Happy guests tip; deliveries',
+      'open new floors, each adding one improvement you choose.',
       '',
-      'ARROWS drive the lever — the car has momentum.',
-      'SPACE works the gate — only when flush with a floor.',
-      'Deliver guests before they boil over. 3 walk-outs and',
-      'the management lets you go.',
+      'CHOOSE YOUR CONTROLS TO CLOCK IN:',
+      '1 — CLASSIC    arrows drive the lever, space works the gate',
+      '2 — WHEEL      scroll shoves the car, space works the gate',
+      '3 — DISPATCH   click a floor, the car drives itself',
       '',
-      'Happy guests tip. Deliveries open new floors, and',
-      'every opening lets you install one improvement.',
       'BEST: FLOOR '+floorName(G.hs.floor)+'  ·  $'+G.hs.tips.toFixed(2),
     ]);
   } else if(G.state==='over'){
