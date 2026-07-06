@@ -198,6 +198,8 @@ function playRound2(name, skill, maxMinutes=30){
     tSim += DT;
     T.update(DT);
 
+    if (!stats.firstWacky && g.pax.some(p=>p.arch)) stats.firstWacky = +(tSim/60).toFixed(2);
+
     if (g.strikes > lastStrikes){
       lastStrikes = g.strikes;
       const storming = g.pax.find(p=>p.struck && p.state==='storming');
@@ -284,7 +286,7 @@ for (const [name, skill] of rounds){
   const avgAlign = s.alignSamples ? (s.alignTime/s.alignSamples).toFixed(2) : '-';
   console.log('\n=== ' + name + ' ===');
   console.log(`  survived ${o.time} min | tower ${o.floors} floors | reached FL ${o.maxFloor} | delivered ${o.delivered} | tips $${o.tips} | ${o.ended}`);
-  console.log(`  stops ${s.stops} | denied opens ${s.deniedOpens} | overshoots ${s.overshoots} | avg approach->doors ${avgAlign}s`);
+  console.log(`  stops ${s.stops} | denied opens ${s.deniedOpens} | overshoots ${s.overshoots} | avg approach->doors ${avgAlign}s | first wacky guest ${s.firstWacky ? s.firstWacky+'m' : 'never'}`);
   console.log(`  strikes: hall ${s.waitStorms} / car ${s.rideStorms}  at ` + s.strikeLog.map(k=>`${(k.t/60).toFixed(1)}m(fl${k.floors},d${k.delivered})`).join(', '));
 }
 fs.writeFileSync('C:/Users/seany/AppData/Local/Temp/claude/C--Users-seany-Projects-GameDev/78f0bf01-559e-4e64-844c-fb364cce97be/scratchpad/playtest-results.json', JSON.stringify(all,null,1));

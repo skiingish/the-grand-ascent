@@ -184,20 +184,116 @@ function xferTime(){
 
 /* ---------- passengers ---------- */
 function rnd(n){ return Math.floor(Math.random()*n); }
+
+/* ---- the cast: named characters, tiered by tower height (see CHARACTERS.md) ---- */
+const TIER_UNLOCK={1:7,2:12,3:17}, CELEB_UNLOCK=15;
+const ARCH={
+  bellhop:  {tier:1,w:3,pat:0.8, tip:0.6,rule:'cross',    lady:false},
+  flapper:  {tier:1,w:2,pat:1.1, tip:1.3,rule:'top2',     lady:true},
+  salesman: {tier:1,w:2,pat:0.7, tip:0.7,rule:'nextfloor',lady:false},
+  chef:     {tier:1,w:2,pat:1.3, tip:1.6,rule:'kitchen',  lady:false},
+  aviatrix: {tier:2,w:2,pat:0.85,tip:1.5,rule:'roof',     lady:true, pants:true},
+  zora:     {tier:2,w:1,pat:0.6, tip:1.2,rule:'floor13',  lady:true, gown:true, needs:14},
+  flint:    {tier:2,w:2,pat:0.75,tip:1.0,rule:'shadow',   lady:false},
+  bootlegger:{tier:2,w:1,pat:1.15,tip:2.0,rule:'cellar',   lady:false},
+  professor:{tier:2,w:2,pat:0.55,tip:1.1,rule:'reroll',   lady:false},
+  diva:     {tier:3,w:2,pat:1.8, tip:3.0,rule:'lobbytop3',lady:true, gown:true},
+  boone:    {tier:3,w:2,pat:0.7, tip:1.8,rule:'gig',      lady:false},
+  baroness: {tier:3,w:2,pat:1.2, tip:2.2,rule:'audit',    lady:true},
+  colonel:  {tier:3,w:2,pat:0.4, tip:1.0,rule:'longhaul', lady:false, needs:7},
+  gloria:   {tier:9,w:1,pat:1.5, tip:4.0,rule:'penthouse',lady:true, gown:true, celeb:true, announce:'GLORIA DELACROIX HAS ARRIVED'},
+  magnifico:{tier:9,w:1,pat:1.4, tip:2.5,rule:'cross',    lady:false, celeb:true, vanish:true, announce:'IL MAGNIFICO GRACES THE HOTEL'},
+  duchess:  {tier:9,w:1,pat:0.9, tip:2.0,rule:'promenade',lady:true, celeb:true, announce:'THE DUCHESS OF MARLOW & BIJOU'},
+};
+function pickWeighted(keys){
+  const tot=keys.reduce((s,k)=>s+ARCH[k].w,0); let r=Math.random()*tot;
+  for(const k of keys){ r-=ARCH[k].w; if(r<=0) return k; }
+  return keys[keys.length-1];
+}
+function archEligible(k){ const a=ARCH[k]; return !a.needs||G.floors>=a.needs; }
+function routeFor(rule){
+  const top=G.floors-1;
+  switch(rule){
+    case 'cross':    { const f=rnd(G.floors); let d; do{d=rnd(G.floors);}while(d===f); return [f,d]; }
+    case 'top2':     return [0, top-rnd(Math.min(2,top))];
+    case 'nextfloor':{ const f=rnd(G.floors); return [f, f===0?1:(f===top?top-1:(Math.random()<0.5?f-1:f+1))]; }
+    case 'kitchen':  { const u=2+rnd(Math.max(1,top-1)); return Math.random()<0.5?[1,Math.min(top,u)]:[Math.min(top,u),1]; }
+    case 'roof':     return [0,top];
+    case 'floor13':  { let f; do{f=rnd(G.floors);}while(f===13); return [f,13]; }
+    case 'shadow':   { const last=[...G.pax].reverse().find(p=>p.state==='waiting'); return last?[last.from,last.dest]:null; }
+    case 'cellar':   { const d=Math.min(top,3+rnd(Math.max(1,top-2))); return d===2?null:[2,d]; }
+    case 'reroll':   return null;                      // normal roll; quirk fires while waiting
+    case 'lobbytop3':{ const t3=top-rnd(Math.min(3,top)); return Math.random()<0.5?[0,t3]:[t3,0]; }
+    case 'gig':      return Math.random()<0.6?[0,top]:[top,0];
+    case 'audit':    { let best=0,n=-1; for(let f2=0;f2<G.floors;f2++){ const c=waitersAt(f2).length; if(c>n){n=c;best=f2;} }
+                       if(n<=0) return null; let f; do{f=rnd(G.floors);}while(f===best); return [f,best]; }
+    case 'longhaul': { const f=rnd(G.floors), ups=top-f>=6, downs=f>=6;
+                       if(!ups&&!downs) return null;
+                       const up=ups&&(!downs||Math.random()<0.5);
+                       return [f, up? f+6+rnd(top-f-5) : f-6-rnd(f-5)]; }
+    case 'penthouse':return [0,top];
+    case 'promenade':{ const f=rnd(G.floors), hop=2+rnd(2);
+                       const d=(f+hop<=top&&(Math.random()<0.5||f-hop<0))?f+hop:Math.max(0,f-hop);
+                       return d===f?null:[f,d]; }
+  }
+  return null;
+}
+/* ordinary-guest wardrobe grows with the tower */
+const COATS9 =[['#5a3a5e','#472e4a','#735079'],['#3a5a3e','#2d4630','#4e7253']];
+const COATS13=[['#a3852e','#836a24','#bd9f4a'],['#5a7a9a','#47617b','#7495b3']];
+const COATS17=[['#d8cbb0','#b5a98f','#f4e8cf'],['#26221e','#1a1714','#38332d']];
+const ARCH_COATS={
+  bellhop:['#a63d2f','#7d2e23','#c25a4a'], flapper:['#1f7a8c','#155e6d','#3aa0b5'],
+  salesman:['#8a7440','#6e5c33','#a48f5c'], chef:['#f4e8cf','#d8cbb0','#ffffff'],
+  aviatrix:['#6b4a2c','#523821','#8a6540'], zora:['#3d2b52','#2c1f3d','#584175'],
+  flint:['#4a453c','#3a362f','#5d574c'], bootlegger:['#33383f','#262a30','#4a515c'],
+  professor:['#5c5a3e','#4a4832','#757352'], diva:['#8c1f2e','#6d1723','#b03a4a'],
+  boone:['#f4e8cf','#d8cbb0','#ffffff'], baroness:['#1d1814','#12100d','#33302a'],
+  colonel:['#9a8a5c','#7e7049','#b5a677'], gloria:['#ffffff','#dcdcdc','#f4e8cf'],
+  magnifico:['#1d1814','#12100d','#2e2a24'], duchess:['#8a8578','#6f6b60','#a5a094'],
+};
+
 function spawnPassenger(){
   const top=G.floors-1;
-  let from,dest,r=Math.random();
-  if(r<0.5){ from=0; dest=1+rnd(top); }
-  else if(r<0.85){ from=1+rnd(top); dest=0; }
-  else { from=rnd(G.floors); do{dest=rnd(G.floors);}while(dest===from); }
+  /* --- who arrives? --- */
+  let arch=null;
+  if(G.floors>=CELEB_UNLOCK && Math.random()<1/25 && !G.pax.some(p=>p.arch&&ARCH[p.arch].celeb)){
+    const pool=Object.keys(ARCH).filter(k=>ARCH[k].celeb&&archEligible(k));
+    if(pool.length) arch=pickWeighted(pool);
+  }
+  if(!arch){
+    const t1=G.floors>=TIER_UNLOCK[1]?0.18:0, t2=G.floors>=TIER_UNLOCK[2]?0.15:0, t3=G.floors>=TIER_UNLOCK[3]?0.10:0;
+    const r=Math.random(); let tier=0;
+    if(r<t3) tier=3; else if(r<t3+t2) tier=2; else if(r<t3+t2+t1) tier=1;
+    if(tier>0){
+      const pool=Object.keys(ARCH).filter(k=>ARCH[k].tier===tier&&archEligible(k));
+      if(pool.length) arch=pickWeighted(pool);
+    }
+  }
+  const a=arch?ARCH[arch]:null;
+  /* --- where to? --- */
+  let from,dest,route=a?routeFor(a.rule):null;
+  if(route){ [from,dest]=route; }
+  else {
+    const r=Math.random();
+    if(r<0.5){ from=0; dest=1+rnd(top); }
+    else if(r<0.85){ from=1+rnd(top); dest=0; }
+    else { from=rnd(G.floors); do{dest=rnd(G.floors);}while(dest===from); }
+  }
+  const evening=G.floors>=13;
+  const coats=COATS.concat(G.floors>=9?COATS9:[], G.floors>=13?COATS13:[], G.floors>=17?COATS17:[]);
   G.pax.push({
     id:G.spawnId++, from, dest, state:'waiting',
-    grump:0, angry:false, struck:false,
-    x:0, walk:0, coat:COATS[rnd(COATS.length)],
-    hat:Math.random()<.6, lady:Math.random()<.4,
+    grump:0, angry:false, struck:false, waitT:0, rerolled:false,
+    arch, patMul:a?a.pat:0.85+Math.random()*0.3, tipMul:a?a.tip:1,
+    vanish:!!(a&&a.vanish), puffT:(arch==='magnifico')?0.5:0,
+    x:0, walk:0, coat:arch?ARCH_COATS[arch]:coats[rnd(coats.length)],
+    hat:a?false:Math.random()<(evening?.75:.6), lady:a?!!a.lady:Math.random()<.4,
+    pants:!!(a&&a.pants), gown:!!(a&&a.gown),
     skin:SKINS[rnd(SKINS.length)], hair:HAIRS[rnd(HAIRS.length)],
-    bag:Math.random()<.3,
+    bag:a?false:Math.random()<.3,
   });
+  if(a&&a.celeb){ say(a.announce,3); S.fanfare(); }
 }
 function waitersAt(f){ return G.pax.filter(p=>p.state==='waiting'&&p.from===f); }
 function riders(){ return G.pax.filter(p=>p.state==='riding'); }
@@ -231,7 +327,7 @@ addEventListener('keydown',e=>{
     if(e.code==='ArrowLeft'||e.code==='ArrowRight'){ G.pickSel=1-G.pickSel; S.denied(); }
     else if(e.code==='Digit1') pickUpgrade(0);
     else if(e.code==='Digit2') pickUpgrade(1);
-    else if(e.code==='Enter'||e.code==='Space') pickUpgrade(G.pickSel);
+    else if(e.code==='Enter') pickUpgrade(G.pickSel);  // NOT Space — that's the gate key; mis-presses were installing upgrades
     return;
   }
   if(G.state!=='play') return;
@@ -306,7 +402,7 @@ function update(dt){
         if(p.state==='exiting'){
           p.state='gone';
           if(!p.angry){
-            let tip=(0.5+4.5*Math.pow(Math.max(0,1-p.grump),1.4))*(1+0.15*upLv('tipjar'));
+            let tip=(0.5+4.5*Math.pow(Math.max(0,1-p.grump),1.4))*(1+0.15*upLv('tipjar'))*(p.tipMul||1);
             if(G.silk) tip*=1.25;                       // silk stops pay better
             G.tips+=tip; G.delivered++; S.coin();
             /* commendations: flawless streaks buy back strikes */
@@ -325,7 +421,10 @@ function update(dt){
             }
           }
         }
-        else if(p.state==='boarding'){ p.state='riding'; p.grump=Math.max(0,p.grump-0.2); }
+        else if(p.state==='boarding'){
+          p.state='riding'; p.grump=Math.max(0,p.grump-0.2);
+          if(p.arch==='boone') S.fanfare();             // the bandleader boards with a flourish
+        }
       }
     } else {
       const out=riders().find(p=>p.dest===f||p.angry);
@@ -339,15 +438,24 @@ function update(dt){
 
   /* --- patience --- */
   if(G.graceT>0) G.graceT-=dt;                        // ribbon-cutting breather
-  const diff=Math.min(2.4,1+(G.floors-2)*0.06);       // difficulty follows the tower
+  const diff=Math.min(2.4,1+(G.floors-2)*0.05);       // difficulty follows the tower
   const calm=G.graceT>0?0.5:1;
   for(const p of G.pax){
+    if(p.puffT>0) p.puffT-=dt;
     if(p.state==='waiting'){
-      p.grump+=dt/40*diff*calm*Math.pow(0.85,upLv('clerk'));
+      p.waitT=(p.waitT||0)+dt;
+      // named guests ride odd routes, so they carry longer fuses — chaos, not emergencies
+      p.grump+=dt/(p.arch?52:42)*diff*calm*(p.patMul||1)*Math.pow(0.85,upLv('clerk'));
+      // the professor remembers it was a different floor after all
+      if(p.arch==='professor'&&!p.rerolled&&p.waitT>10){
+        p.rerolled=true; let d; do{d=rnd(G.floors);}while(d===p.from||d===p.dest); p.dest=d;
+      }
+      if(p.grump>=1&&p.vanish){ p.state='gone'; say("HE'S GONE! ...HOW?",2.5); continue; }
       if(p.grump>=1&&!p.struck){ p.state='storming'; p.walk=0; strike(p); }
     } else if(p.state==='riding'){
       // longer trips come with longer fuses — guests know the penthouse is far
-      p.grump+=dt/(85*(1+0.12*Math.abs(p.dest-p.from)))*diff*calm*Math.pow(0.75,upLv('music'));
+      p.grump+=dt/((p.arch?100:88)*(1+0.12*Math.abs(p.dest-p.from)))*diff*calm*(p.patMul||1)*Math.pow(0.75,upLv('music'));
+      if(p.grump>=1&&p.vanish){ p.state='gone'; say('HE HAS VANISHED FROM A MOVING LIFT!',2.5); continue; }
       if(p.grump>=1&&!p.angry){ p.angry=true; strike(p); say('A GUEST IS FUMING IN THE CAR!',2); }
     } else if(p.state==='storming'){
       p.walk+=dt; if(p.walk>1.6) p.state='gone';
@@ -359,7 +467,7 @@ function update(dt){
   if(G.graceT<=0) G.spawnT-=dt;
   if(G.spawnT<=0){
     spawnPassenger();
-    const base=Math.max(2.9,7.2-0.32*G.floors);       // plateau above lift throughput
+    const base=Math.max(3.05,7.2-0.32*G.floors);      // plateau above lift throughput
     G.spawnT=base*(0.7+Math.random()*0.6);
   }
 
@@ -391,7 +499,8 @@ function drawPerson(x,y,p,frame){
   // shadow
   px(x,y-1,14,2,'rgba(0,0,0,.35)');
   // legs & shoes
-  if(p.lady){
+  if(p.gown){ /* floor-length — no legs */ }
+  else if(p.lady&&!p.pants){
     px(x+3,y-9,8,4,cB);                                    // skirt hem
     px(x+4,y-5,2,4,'#c9b8a0'); px(x+8,y-5+(step?-1:0),2,4+(step?1:0),'#c9b8a0');
     px(x+3,y-2,3,2,'#1d1814'); px(x+8,y-2+(step?-1:0),3,2,'#1d1814');
@@ -406,18 +515,20 @@ function drawPerson(x,y,p,frame){
     px(x+2,ty,10,11,cA); px(x+2,ty,3,11,cC); px(x+9,ty,3,11,cB);   // dress
     px(x+1,ty+2,2,6,cA); px(x+11,ty+2,2,6,cB);                     // arms
     px(x+5,ty+4,4,1,cC);                                           // waist sash
+    if(p.gown){ px(x+2,ty+11,10,6+bob,cA); px(x+1,y-4,12,2,cB); }  // train to the floor
   } else {
     px(x+2,ty,10,10,cA); px(x+2,ty,3,10,cC); px(x+9,ty,3,10,cB);   // coat
     px(x+1,ty+1,2,7,cA); px(x+11,ty+1,2,7,cB);                     // arms
-    px(x+6,ty,2,4,'#e9e2d2'); px(x+6,ty+3,2,3,P.rust);             // shirt + tie
-    px(x+4,ty,2,2,cC); px(x+8,ty,2,2,cB);                          // lapels
+    if(!p.arch){ px(x+6,ty,2,4,'#e9e2d2'); px(x+6,ty+3,2,3,P.rust); // shirt + tie
+                 px(x+4,ty,2,2,cC); px(x+8,ty,2,2,cB); }            // lapels
   }
   if(p.bag){ px(x+12,ty+7,4,5,'#4a3120'); px(x+13,ty+6,2,1,'#2a2018'); }
   // head
   const hy=ty-7;
   px(x+4,hy,6,7,sk); px(x+8,hy+1,2,6,skS);
-  // hair / hat
-  if(p.hat&&!p.lady){ px(x+3,hy-3,8,3,'#1d1814'); px(x+2,hy,10,1,'#1d1814'); px(x+3,hy-2,8,1,'#3a3430'); }
+  // hair / hat (named characters bring their own)
+  if(p.arch){ /* décor below */ }
+  else if(p.hat&&!p.lady){ px(x+3,hy-3,8,3,'#1d1814'); px(x+2,hy,10,1,'#1d1814'); px(x+3,hy-2,8,1,'#3a3430'); }
   else if(p.lady){ px(x+3,hy-2,8,4,p.hair); px(x+3,hy+2,2,3,p.hair); px(x+9,hy+2,2,3,p.hair);
     px(x+3,hy-3,8,2,'#7a3b50'); px(x+10,hy-1,2,2,'#7a3b50'); }     // cloche hat
   else { px(x+3,hy-2,8,3,p.hair); px(x+3,hy,1,3,p.hair); }
@@ -429,6 +540,78 @@ function drawPerson(x,y,p,frame){
   if(g>0.85 && Math.floor(G.t*6)%2===0){
     px(x+11,hy-4,2,2,'rgba(255,255,255,.55)'); px(x+13,hy-8,3,3,'rgba(255,255,255,.35)');
     px(x+10,hy-9,2,2,'rgba(255,255,255,.25)');
+  }
+  if(p.arch) drawArchDecor(x,y,ty,hy,p,step);
+}
+
+/* per-character props & headwear, layered over the base sprite */
+function drawArchDecor(x,y,ty,hy,p,step){
+  switch(p.arch){
+    case 'bellhop':                                              // pillbox + brass buttons
+      px(x+4,hy-3,6,2,'#8a3227'); px(x+4,hy-1,6,1,'#c9a227');
+      px(x+6,ty+2,1,1,'#c9a227'); px(x+6,ty+5,1,1,'#c9a227'); break;
+    case 'flapper':                                              // swinging fringe + feather headband
+      for(let i=0;i<5;i++) px(x+2+i*2,y-9+((i+step)%2),1,2,'#3aa0b5');
+      px(x+3,hy-1,8,1,'#f4e8cf'); px(x+9,hy-4,1,3,'#4a9a83'); break;
+    case 'salesman':                                             // straw boater + enormous case
+      px(x+4,hy-3,6,2,'#d9c98a'); px(x+4,hy-1,6,1,'#7a3b30'); px(x+2,hy,10,1,'#d9c98a');
+      px(x+12,ty+5,6,7,'#4a3120'); px(x+14,ty+8,2,1,'#c9a227'); break;
+    case 'chef':                                                 // towering toque + neckerchief
+      px(x+4,hy-6,6,6,'#ffffff'); px(x+8,hy-6,2,6,'#d8cbb0'); px(x+6,ty,2,2,'#a63d2f'); break;
+    case 'aviatrix':                                             // goggles up + silk scarf
+      px(x+3,hy,8,1,'#2a2018'); px(x+4,hy-1,2,2,'#4a9a83'); px(x+8,hy-1,2,2,'#4a9a83');
+      px(x+2+(step?0:1),ty+1,2,5,'#f4e8cf'); break;
+    case 'zora':                                                 // turban, brooch, drifting ectoplasm
+      px(x+3,hy-4,8,4,'#584175'); px(x+6,hy-4,1,2,'#c9a227');
+      px(x+6+Math.round(Math.sin(G.t*2+p.id)*2),hy-8,1,1,'rgba(200,200,216,.45)'); break;
+    case 'flint':                                                // wide-brim fedora + popped collar
+      px(x+3,hy-3,8,3,'#2e2a24'); px(x+3,hy-1,8,1,'#1d1814'); px(x+1,hy,12,1,'#2e2a24');
+      px(x+2,ty-1,2,2,'#5d574c'); px(x+10,ty-1,2,2,'#5d574c'); break;
+    case 'bootlegger':                                           // pinstripes, spats, crate
+      px(x+2,hy-3,8,3,'#33383f'); px(x+1,hy,10,1,'#33383f');
+      px(x+4,ty+1,1,8,'#f4e8cf'); px(x+7,ty+1,1,8,'#f4e8cf');
+      px(x+2,y-3,4,1,'#f4e8cf'); px(x+8,y-3+(step?-1:0),4,1,'#f4e8cf');
+      px(x+12,ty+7,5,5,'#8a6540'); px(x+12,ty+9,5,1,'#523821'); break;
+    case 'professor':                                            // wild hair, brass specs, book
+      px(x+2,hy-3,10,3,'#e8e4da'); px(x+1,hy-2,1,2,'#e8e4da'); px(x+12,hy-2,1,2,'#e8e4da');
+      px(x+5,hy+2,1,1,'#c9a227'); px(x+7,hy+2,1,1,'#c9a227'); px(x+6,hy+2,1,1,'#c9a227');
+      px(x+12,ty+6,2,3,'#7a3b30'); break;
+    case 'diva':                                                 // fur stole, gold trim, aigrette
+      px(x+1,ty-1,12,2,'#e8e4da'); px(x+2,ty+9,10,1,'#f0d68a'); px(x+7,hy-6,1,4,'#4a9a83');
+      px(x+3,hy-2,8,2,'#2a2018'); break;
+    case 'boone':                                                // cream tux, bow tie, trombone
+      px(x+3,hy-2,8,2,'#1d1814');
+      px(x+4,ty,2,2,'#1d1814'); px(x+8,ty,2,2,'#1d1814'); px(x+6,ty+1,2,1,'#1d1814');
+      px(x+12,ty+2,2,8,'#c9a227'); px(x+11,ty-2,3,3,'#f0d68a'); break;
+    case 'baroness':                                             // fox collar, pearls, lorgnette
+      px(x+3,hy-2,8,2,'#1d1814'); px(x+1,ty-1,12,2,'#c8c2b6');
+      px(x+6,ty+2,1,1,'#f4e8cf'); px(x+6,ty+4,1,1,'#f4e8cf'); px(x+6,ty+6,1,1,'#f4e8cf');
+      px(x+11,hy+2,2,1,'#c9a227'); break;
+    case 'colonel':                                              // pith helmet, walrus mustache, sash
+      px(x+3,hy-3,8,2,'#d9c98a'); px(x+1,hy-1,12,1,'#d9c98a');
+      px(x+4,hy+3,6,2,'#e8e4da'); px(x+7,hy+2,1,1,'#c9a227');
+      px(x+4,ty+2,1,1,'#8c1f2e'); px(x+6,ty+4,1,1,'#8c1f2e'); px(x+8,ty+6,1,1,'#8c1f2e'); break;
+    case 'gloria':                                               // platinum waves, choker, sparkle
+      px(x+3,hy-2,8,3,'#e8e4da'); px(x+6,ty-1,3,1,'#c8c8d8');
+      glow(x+7,y-2,10,'rgba(255,255,255,.14)');
+      for(let i=0;i<3;i++){
+        const sx2=x+7+Math.round(Math.sin(G.t*4+i*2.1)*8), sy2=hy+Math.round(Math.cos(G.t*3+i*2.1)*9);
+        px(sx2,sy2,1,1,'rgba(255,255,255,.7)');
+      } break;
+    case 'magnifico':                                            // top hat, crimson-lined cape
+      px(x+4,hy-5,6,4,'#1d1814'); px(x+4,hy-2,6,1,'#8c1f2e'); px(x+2,hy-1,10,1,'#1d1814');
+      px(x+1,ty,1,8,'#8c1f2e'); px(x+12,ty,1,8,'#8c1f2e'); px(x+5,hy+3,4,1,'#1d1814');
+      if(p.puffT>0){ const s=Math.round((0.5-p.puffT)*24);
+        px(x+7-s/2,y-14-s/2,s,s,'rgba(244,232,207,.35)');
+        px(x+7-s/4,y-14-s/4,s/2,s/2,'rgba(244,232,207,.3)'); } break;
+    case 'duchess':{                                             // brooch, grey hat — and Bijou
+      px(x+3,hy-2,8,2,'#6f6b60'); px(x+6,ty+2,1,1,'#584175');
+      const bb=Math.floor(G.t*6+p.id)%2;
+      px(x-9,y-5+bb,5,3,'#e0a83c'); px(x-11,y-7+bb,3,3,'#e0a83c');  // Bijou body+head
+      px(x-10,y-6+bb,1,1,'#1d1814'); px(x-9,y-8+bb,1,1,'#8c1f2e');  // eye + bow
+      px(x-8,y-2,1,2,'#c9922e'); px(x-6,y-2+bb,1,2,'#c9922e');      // trotting legs
+      px(x-6,y-8,3,1,'#c9a227'); px(x-3,y-10,3,1,'#c9a227'); px(x,ty+6,2,1,'#c9a227'); // leash
+      break; }
   }
 }
 function moodColor(g){ return g<0.5?P.ok:(g<0.8?P.warn:P.bad); }

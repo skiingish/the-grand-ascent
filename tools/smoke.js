@@ -166,6 +166,40 @@ function boardTime(floor, bellboyLv){
 const tLobby = boardTime(0, 2), tUpstairs = boardTime(1, 2);
 check('bellboy hustles at the lobby only', tLobby < tUpstairs - 0.1);
 
+// character cast: tier gating
+function spawnMany(floors, n){
+  T.reset(); fire('keydown','Space'); fire('keyup','Space');
+  T.G.floors = floors; T.G.spawnT = 999;
+  const archs = new Set();
+  for (let i=0;i<n;i++){ T.G.spawnT = 0; T.update(0.016); }
+  T.G.pax.forEach(p => { if (p.arch) archs.add(p.arch); });
+  return archs;
+}
+const at5 = spawnMany(5, 120);
+check('no named characters before 7 floors', at5.size === 0);
+const at8 = spawnMany(8, 250);
+const tiersAt8 = new Set([...at8].map(k => k.length && ['bellhop','flapper','salesman','chef'].includes(k) ? 1 : 9));
+check('tier-1 regulars appear at 7+ floors', at8.size > 0 && !tiersAt8.has(9));
+const at20 = spawnMany(20, 400);
+check('deep tower spawns eccentrics/legends', [...at20].some(k => ['aviatrix','zora','flint','bootlegger','professor','diva','boone','baroness','colonel'].includes(k)));
+
+// named quirks: patience & tip multipliers flow through
+T.reset(); fire('keydown','Space'); fire('keyup','Space');
+T.G.spawnT = 999; T.G.graceT = 0;
+T.G.pax = [
+  {id:400, arch:'colonel', patMul:0.4, tipMul:1, vanish:false, puffT:0, waitT:0, rerolled:false, from:1, dest:0, state:'waiting', grump:0, angry:false, struck:false, x:200, walk:0, coat:['#000','#000','#000'], hat:false, lady:false, skin:['#000','#000'], hair:'#000', bag:false},
+  {id:401, arch:'diva', patMul:2.0, tipMul:3, vanish:false, puffT:0, waitT:0, rerolled:false, from:1, dest:0, state:'waiting', grump:0, angry:false, struck:false, x:220, walk:0, coat:['#000','#000','#000'], hat:false, lady:true, gown:true, skin:['#000','#000'], hair:'#000', bag:false},
+];
+run(5);
+check('patience multipliers differentiate guests', T.G.pax[1].grump > T.G.pax[0].grump*3);
+
+// il magnifico vanishes instead of striking
+T.reset(); fire('keydown','Space'); fire('keyup','Space');
+T.G.spawnT = 999; T.G.graceT = 0; T.G.strikes = 0;
+T.G.pax = [{id:402, arch:'magnifico', patMul:1.4, tipMul:2.5, vanish:true, puffT:0, waitT:0, rerolled:false, from:1, dest:0, state:'waiting', grump:0.995, angry:false, struck:false, x:200, walk:0, coat:['#000','#000','#000'], hat:false, lady:false, skin:['#000','#000'], hair:'#000', bag:false}];
+run(2);
+check('il magnifico vanishes, no strike', T.G.strikes === 0 && T.G.pax.length === 0);
+
 // esc pauses and resumes
 T.G.state = 'play';
 fire('keydown','Escape'); fire('keyup','Escape');

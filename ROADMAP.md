@@ -1,7 +1,7 @@
 # Roadmap / Parked Work
 
-## PARKED: Character cast (pick up later)
-Full design ready in `CHARACTERS.md` — 16 characters in tiers keyed to tower
+## DONE: Character cast
+**UNPARKED 2026-07-06: implemented in index.html** (all 16 characters, tiers T1@7/T2@12/T3@17/celebs@15). Original design in `CHARACTERS.md` — 16 characters in tiers keyed to tower
 height (regulars 9+, eccentrics 13+, legends 17+, rare celebrities 15+), with
 palettes and drawing notes that slot into `drawPerson()`, and v1-ready quirks
 using only existing mechanics (patience/tip multipliers, destination patterns).
