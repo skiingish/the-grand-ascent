@@ -271,6 +271,7 @@ try {
   T.G.state="pause"; T.draw();
   T.G.state="pick"; T.G.offers=['cap','speed']; T.draw();
   T.G.state="devmenu"; T.draw();
+  T.G.state="play"; T.G.base=3; T.G.pos=-2; T.G.camY=-3*84; T.draw();   // all three basement scenes
   console.log('PASS  draw() renders all states');
 } catch(e){ console.log('FAIL  draw() threw: ' + e.message); fails++; }
 
