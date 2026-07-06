@@ -227,7 +227,8 @@ function routeFor(rule){
     case 'roof':     return [0,top];
     case 'floor13':  { let f; do{f=rnd(G.floors);}while(f===13); return [f,13]; }
     case 'shadow':   { const last=[...G.pax].reverse().find(p=>p.state==='waiting'); return last?[last.from,last.dest]:null; }
-    case 'cellar':   { const d=Math.min(top,3+rnd(Math.max(1,top-2))); return d===2?null:[2,d]; }
+    case 'cellar':   { const from=G.base>0?-1-rnd(G.base):2;           // runs crates up from the speakeasy once it exists
+                       const d=Math.min(top,3+rnd(Math.max(1,top-2))); return d===from?null:[from,d]; }
     case 'reroll':   return null;                      // normal roll; quirk fires while waiting
     case 'lobbytop3':{ const t3=top-rnd(Math.min(3,top)); return Math.random()<0.5?[0,t3]:[t3,0]; }
     case 'gig':      return Math.random()<0.6?[0,top]:[top,0];
