@@ -128,6 +128,18 @@ fire('keydown','Space'); fire('keyup','Space');
 run(2);
 check('boarding relief lowers grump', T.G.pax[0].state === 'riding' && T.G.pax[0].grump < 0.6);
 
+// manager's favor: extra strike slot
+T.G.state = 'play'; T.G.up.favor = 1; T.G.strikes = 2;
+T.G.pax = [{id:106, from:1, dest:0, state:'waiting', grump:0.99, angry:false, struck:false, x:200, walk:0, coat:'#000', hat:true, lady:false, skin:'#000'}];
+T.G.graceT = 0;
+run(2);
+check("manager's favor: survives 3rd strike with 4 slots", T.G.strikes === 3 && T.G.state === 'play');
+T.G.pax = [{id:107, from:1, dest:0, state:'waiting', grump:0.99, angry:false, struck:false, x:200, walk:0, coat:'#000', hat:true, lady:false, skin:'#000'}];
+run(2);
+check("manager's favor: 4th strike still ends it", T.G.state === 'over');
+fire('keydown','Enter'); fire('keyup','Enter'); // fresh run for remaining tests
+T.G.spawnT = 999; T.G.pax = [];
+
 // esc pauses and resumes
 T.G.state = 'play';
 fire('keydown','Escape'); fire('keyup','Escape');

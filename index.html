@@ -158,7 +158,9 @@ const UPGRADES={
   music: {name:'GRAMOPHONE',    desc:'Riders stay calm 25% longer',       max:3},
   clerk: {name:'DESK CLERK',    desc:'Hall guests fret 15% slower',       max:3},
   tipjar:{name:'BRASS TIP JAR', desc:'All tips grow by 15%',              max:3},
+  favor: {name:"MANAGER'S FAVOR",desc:'One more strike allowed',          max:2},
 };
+function maxStrikes(){ return 3+upLv('favor'); }
 function upLv(id){ return G.up[id]||0; }
 function rollOffers(){
   const pool=Object.keys(UPGRADES).filter(id=>upLv(id)<UPGRADES[id].max);
@@ -197,8 +199,8 @@ function riders(){ return G.pax.filter(p=>p.state==='riding'); }
 function strike(p){
   if(p.struck) return;
   p.struck=true; G.strikes++; G.shake=.35; S.huff();
-  say(G.strikes>=3?'THE MANAGEMENT HAS SEEN ENOUGH':'A GUEST STORMS OFF!  ('+G.strikes+'/3)');
-  if(G.strikes>=3){
+  say(G.strikes>=maxStrikes()?'THE MANAGEMENT HAS SEEN ENOUGH':'A GUEST STORMS OFF!  ('+G.strikes+'/'+maxStrikes()+')');
+  if(G.strikes>=maxStrikes()){
     G.state='over';
     if(G.maxFloor>G.hs.floor||(G.maxFloor===G.hs.floor&&G.tips>G.hs.tips)){
       G.hs={floor:G.maxFloor,tips:G.tips};
@@ -665,14 +667,15 @@ function drawHUD(){
   ctx.fillText('BEST  FL '+floorName(G.maxFloor),16,54);
   ctx.fillStyle=G.flawless>=15?P.brassHi:P.cream;
   ctx.fillText('MERIT '+G.flawless+'/20',16,69);
-  // strikes
-  plaque(VW-96,8,88,34);
-  for(let i=0;i<3;i++){
-    px(VW-84+i*24,14,14,14,i<G.strikes?P.bad:'#2a231c');
-    if(i<G.strikes) glow(VW-77+i*24,21,10,'rgba(213,83,60,.5)');
-    ctx.strokeStyle=P.brassLo; ctx.strokeRect(VW-84.5+i*24,13.5,15,15);
+  // strikes (lamp count grows with Manager's Favor)
+  const ns=maxStrikes(), sw=ns*24+16, sx=VW-8-sw;
+  plaque(sx,8,sw,34);
+  for(let i=0;i<ns;i++){
+    px(sx+12+i*24,14,14,14,i<G.strikes?P.bad:'#2a231c');
+    if(i<G.strikes) glow(sx+19+i*24,21,10,'rgba(213,83,60,.5)');
+    ctx.strokeStyle=P.brassLo; ctx.strokeRect(sx+12.5+i*24,13.5,15,15);
   }
-  ctx.fillStyle=P.cream; ctx.font='8px monospace'; ctx.textAlign='center'; ctx.fillText('STRIKES',VW-52,38);
+  ctx.fillStyle=P.cream; ctx.font='8px monospace'; ctx.textAlign='center'; ctx.fillText('STRIKES',sx+sw/2,38);
   drawDial();
   // minimap
   const mx=VW-26,mh=VH-120,my=64;
