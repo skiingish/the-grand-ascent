@@ -200,6 +200,30 @@ T.G.pax = [{id:402, arch:'magnifico', patMul:1.4, tipMul:2.5, vanish:true, puffT
 run(2);
 check('il magnifico vanishes, no strike', T.G.strikes === 0 && T.G.pax.length === 0);
 
+// basements: car descends below the lobby only once dug
+T.reset(); fire('keydown','Space'); fire('keyup','Space');
+T.G.spawnT = 999; T.G.pax = [];
+run(1.5, ['ArrowDown']);
+check('no descent below lobby before digging', T.G.pos === 0);
+T.G.base = 2;
+run(1.5, ['ArrowDown']);
+check('car descends into dug basements', T.G.pos < -0.5);
+
+// basement delivery pays hush money (1.5x)
+T.reset(); fire('keydown','Space'); fire('keyup','Space');
+T.G.spawnT = 999; T.G.base = 1; T.G.graceT = 0;
+T.G.pax = [{id:500, from:-1, dest:1, state:'riding', grump:0, angry:false, struck:false, waitT:0, patMul:1, tipMul:1, x:0, walk:0, coat:['#000','#000','#000'], hat:false, lady:false, skin:['#000','#000'], hair:'#000', bag:false}];
+T.G.pos = 1.05; T.G.vel = 0;   // off-flush: no silk bonus
+fire('keydown','Space'); fire('keyup','Space');
+run(3);
+check('hush money: basement fare pays 1.5x', T.G.tips > 7.2 && T.G.tips <= 7.5);   // ~7.44: tiny grump accrues during the door cycle
+
+// gate opens flush at B1
+T.reset(); fire('keydown','Space'); fire('keyup','Space');
+T.G.spawnT = 999; T.G.base = 1; T.G.pos = -1; T.G.vel = 0;
+fire('keydown','Space'); fire('keyup','Space');
+check('gate opens flush at B1', T.G.doorOpen === true);
+
 // esc pauses and resumes
 T.G.state = 'play';
 fire('keydown','Escape'); fire('keyup','Escape');

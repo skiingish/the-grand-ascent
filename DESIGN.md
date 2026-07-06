@@ -36,6 +36,9 @@ Single HTML file, plain JS + Canvas, no build step. Open the file, play the game
 - **Silk Stop**: first-touch flush within a tight tolerance = faster boarding + 25% tip bonus.
 - **Commendations**: every 20 flawless deliveries withdraws a strike (or pays $5 if clean).
 - Camera follows the car; minimap strip shows the whole shaft with waiting passengers colored by mood.
+- **The underworld:** each floor opening has a 30% chance (max 3) of also revealing a basement —
+  B1 Wu's Laundry (a front), B2 The Velvet Room (casino), B3 The Blind Tiger (speakeasy).
+  Basement fares are rare (15% of spawns) and pay 1.5x hush money. Dial and minimap extend below street level.
 
 ## Scoring
 - Tips scaled by remaining patience at delivery.

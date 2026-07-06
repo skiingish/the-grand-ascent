@@ -133,7 +133,7 @@ function reset(){
   G={
     state:'title', t:0,
     pos:0, vel:0,               // pos in floor units, 0 = lobby
-    floors:5, cap:3,
+    floors:5, cap:3, base:0, justDug:false,
     up:{}, offers:null, pickSel:0, graceT:0, silk:false, flawless:0,
     transferDur:0.45,
     doorT:0, doorOpen:false,    // doorT 0..1 openness
@@ -147,7 +147,12 @@ function reset(){
 reset();
 
 function say(txt,t=2.4){ G.msg=txt; G.msgT=t; }
-function floorName(f){ return f===0?'L':''+(f+0); }
+function floorName(f){ return f===0?'L':(f<0?'B'+(-f):''+f); }
+const BASEMENTS=[
+  {name:"WU'S LAUNDRY",   sign:'#4a9a83'},
+  {name:'THE VELVET ROOM',sign:'#d5533c'},
+  {name:'THE BLIND TIGER',sign:'#e0a83c'},
+];
 
 /* ---------- upgrades (drafted 1-of-2 when a floor opens) ---------- */
 const UPGRADES={
@@ -174,7 +179,8 @@ function pickUpgrade(i){
   G.up[id]=upLv(id)+1;
   if(id==='cap') G.cap=Math.min(9,G.cap+1);
   G.offers=null; G.state='play'; G.graceT=8; S.ding(2);
-  say('FLOOR '+floorName(G.floors-1)+' OPEN  ·  '+UPGRADES[id].name+' INSTALLED',3);
+  if(G.justDug){ G.justDug=false; say('WORD IS '+BASEMENTS[G.base-1].name+' JUST OPENED BELOW THE STREET...',3.5); }
+  else say('FLOOR '+floorName(G.floors-1)+' OPEN  ·  '+UPGRADES[id].name+' INSTALLED',3);
 }
 function xferTime(){
   let t=(G.silk?0.24:0.45)*Math.pow(0.88,upLv('gate'));
@@ -225,7 +231,7 @@ function routeFor(rule){
     case 'reroll':   return null;                      // normal roll; quirk fires while waiting
     case 'lobbytop3':{ const t3=top-rnd(Math.min(3,top)); return Math.random()<0.5?[0,t3]:[t3,0]; }
     case 'gig':      return Math.random()<0.6?[0,top]:[top,0];
-    case 'audit':    { let best=0,n=-1; for(let f2=0;f2<G.floors;f2++){ const c=waitersAt(f2).length; if(c>n){n=c;best=f2;} }
+    case 'audit':    { let best=0,n=-1; for(let f2=-G.base;f2<G.floors;f2++){ const c=waitersAt(f2).length; if(c>n){n=c;best=f2;} }
                        if(n<=0) return null; let f; do{f=rnd(G.floors);}while(f===best); return [f,best]; }
     case 'longhaul': { const f=rnd(G.floors), ups=top-f>=6, downs=f>=6;
                        if(!ups&&!downs) return null;
@@ -274,6 +280,12 @@ function spawnPassenger(){
   /* --- where to? --- */
   let from,dest,route=a?routeFor(a.rule):null;
   if(route){ [from,dest]=route; }
+  else if(G.base>0&&Math.random()<0.15){
+    // underworld traffic: to or from the joints below the street
+    const b=-1-rnd(G.base);
+    if(Math.random()<0.5){ from=b; dest=Math.random()<0.6?0:1+rnd(top); }
+    else { from=Math.random()<0.6?0:1+rnd(top); dest=b; }
+  }
   else {
     const r=Math.random();
     if(r<0.5){ from=0; dest=1+rnd(top); }
@@ -337,9 +349,9 @@ addEventListener('keyup',e=>keys[e.code]=false);
 
 function flushFloor(){
   const f=Math.round(G.pos);
-  if(f<0||f>=G.floors) return -1;
+  if(f<-G.base||f>=G.floors) return -99;
   const tol=0.085*(1+0.25*upLv('magnet'));
-  return (Math.abs(G.pos-f)<tol && Math.abs(G.vel)<0.3) ? f : -1;
+  return (Math.abs(G.pos-f)<tol && Math.abs(G.vel)<0.3) ? f : -99;
 }
 function toggleGate(){
   if(G.doorOpen){
@@ -350,7 +362,7 @@ function toggleGate(){
     waitersAt(f).forEach(p=>p.grump=Math.min(1.2,p.grump+(full?0.25:0.12)));
   } else {
     const f=flushFloor();
-    if(f<0){ S.denied(); say('LINE UP THE CAR, OPERATOR!',1.2); return; }
+    if(f===-99){ S.denied(); say('LINE UP THE CAR, OPERATOR!',1.2); return; }
     G.silk=Math.abs(G.pos-f)<0.035;                    // first-touch perfect stop
     G.doorOpen=true; G.vel=0; G.pos=f; S.gate(true);
     if(G.silk){ S.ding(3); say('SILK STOP — SWIFT SERVICE!',1); }
@@ -377,12 +389,12 @@ function update(dt){
   G.vel=Math.max(-MAX,Math.min(MAX,G.vel));
   G.pos+=G.vel*dt;
   const top=G.floors-1;
-  if(G.pos<0){ G.pos=0; if(G.vel<-0.5)S.clank(); G.vel=0; }
+  if(G.pos<-G.base){ G.pos=-G.base; if(G.vel<-0.5)S.clank(); G.vel=0; }
   if(G.pos>top){ G.pos=top; if(G.vel>0.5)S.clank(); G.vel=0; }
   // floor magnet: settles the last inch, but only once you've all but stopped yourself
   if(upLv('magnet')&&!input&&!locked){
     const nf=Math.round(G.pos), off=G.pos-nf;
-    if(nf>=0&&nf<G.floors&&Math.abs(off)<0.09&&Math.abs(G.vel)<0.22){
+    if(nf>=-G.base&&nf<G.floors&&Math.abs(off)<0.09&&Math.abs(G.vel)<0.22){
       G.pos-=off*Math.min(1,dt*1.3*upLv('magnet'));
       G.vel*=Math.exp(-2*upLv('magnet')*dt);
     }
@@ -404,6 +416,7 @@ function update(dt){
           if(!p.angry){
             let tip=(0.5+4.5*Math.pow(Math.max(0,1-p.grump),1.4))*(1+0.15*upLv('tipjar'))*(p.tipMul||1);
             if(G.silk) tip*=1.25;                       // silk stops pay better
+            if(p.from<0||p.dest<0) tip*=1.5;            // hush money from below the street
             G.tips+=tip; G.delivered++; S.coin();
             /* commendations: flawless streaks buy back strikes */
             G.flawless++;
@@ -415,6 +428,7 @@ function update(dt){
             /* the tower grows — pause for an upgrade draft */
             if(G.delivered>=G.nextFloorAt){
               G.nextFloorAt+=8; G.floors++;
+              if(G.base<3&&Math.random()<0.3){ G.base++; G.justDug=true; }  // something stirs below
               G.offers=rollOffers(); G.pickSel=0; S.fanfare();
               if(G.offers.length) G.state='pick';
               else { G.graceT=8; say('FLOOR '+floorName(G.floors-1)+' NOW OPEN',3); }
@@ -475,7 +489,7 @@ function update(dt){
   const buildingH=G.floors*FLOOR_H+60;
   const carWorldY=G.pos*FLOOR_H;
   let target=carWorldY-VH/2+FLOOR_H;
-  target=Math.max(-30,Math.min(buildingH-VH,target));
+  target=Math.max(-30-G.base*FLOOR_H,Math.min(buildingH-VH,target));
   G.camY+=(target-G.camY)*Math.min(1,dt*5);
 }
 
@@ -635,11 +649,37 @@ function decoPattern(style,x,y,w,h){
   else { for(let i=x;i<x+w;i+=22){ px(i+4,y+6,2,10,b); px(i+8,y+3,2,13,a); px(i+12,y+6,2,10,b); } }
   ctx.restore();
 }
+function drawBasementDecor(f,yt,yb){
+  const b=BASEMENTS[-f-1]||BASEMENTS[0];
+  // rough brick cellar walls
+  px(BX,yt,BW,FLOOR_H,'#2a2320');
+  ctx.fillStyle='rgba(0,0,0,.25)';
+  for(let row=0;row<4;row++) for(let x=BX+((row%2)*10);x<BX+BW-14;x+=20)
+    ctx.fillRect(x+4,yt+8+row*14,14,1);
+  px(BX,yt,BW,2,'#12100d'); px(BX,yb-22,BW,14,'#211c17');
+  // bare hanging bulb
+  px(HALLX+40,yt+4,1,8,'#3a362f'); px(HALLX+39,yt+12,3,4,'#e0a83c');
+  glow(HALLX+40,yt+14,16,'rgba(224,168,60,.22)');
+  // the joint's sign, glowing faintly
+  ctx.fillStyle=b.sign; ctx.font='9px monospace'; ctx.textAlign='left';
+  ctx.fillText(b.name,HALLX+56,yt+22);
+  px(HALLX+54,yt+26,b.name.length*6,1,b.sign);
+  glow(HALLX+56+b.name.length*3,yt+20,22,'rgba(224,168,60,.08)');
+  // per-joint props
+  if(f===-1){ px(BX+30,yb-26,16,20,'#d8cbb0'); px(BX+34,yb-20,8,8,'#33383f'); px(BX+35,yb-19,6,6,'#5a7a9a'); } // washer
+  else if(f===-2){ px(BX+26,yb-16,26,10,'#2e6f5e'); px(BX+24,yb-6,30,2,'#523821');                              // card table
+    px(BX+32,yb-18,3,2,'#d5533c'); px(BX+38,yb-18,3,2,'#f4e8cf'); }                                             // chips
+  else { px(BX+26,yb-22,10,16,'#6b4a2c'); px(BX+40,yb-22,10,16,'#6b4a2c');                                       // barrels
+    px(BX+26,yb-17,10,1,'#3a2e22'); px(BX+40,yb-17,10,1,'#3a2e22'); px(BX+26,yb-12,10,1,'#3a2e22'); px(BX+40,yb-12,10,1,'#3a2e22'); }
+}
+
 function drawFloor(f){
   const yb=sy(f*FLOOR_H);                    // baseline (walkable)
   const yt=yb-FLOOR_H;
   if(yb<-10||yt>VH+10) return;
-  const th=f===0?['#5a4a28','#4c3e21','#c9a227','#3a3018']:THEMES[f%THEMES.length];
+  const th=f===0?['#5a4a28','#4c3e21','#c9a227','#3a3018']:THEMES[((f%THEMES.length)+THEMES.length)%THEMES.length];
+  if(f<0){ drawBasementDecor(f,yt,yb); }
+  else {
   // wall with vertical light falloff
   const wg=ctx.createLinearGradient(0,yt,0,yb);
   wg.addColorStop(0,th[1]); wg.addColorStop(.4,th[0]); wg.addColorStop(1,th[0]);
@@ -664,11 +704,12 @@ function drawFloor(f){
     // red carpet
     px(BX+8,yb-8,SHX-BX-20,5,'#7a2a22'); px(BX+8,yb-8,SHX-BX-20,1,'#a34a3c');
   }
-  // slab (floor plate)
-  px(BX,yb-6,BW,6,P.slab); px(BX,yb-6,BW,1,P.slabHi); px(BX,yb-1,BW,1,P.slabLo);
   // sconce with glow
   px(HALLX+4,yt+26,6,10,P.brass); px(HALLX+5,yt+23,4,4,'#ffd970');
   glow(HALLX+7,yt+26,18,'rgba(255,217,112,.28)');
+  }
+  // slab (floor plate)
+  px(BX,yb-6,BW,6,P.slab); px(BX,yb-6,BW,1,P.slabHi); px(BX,yb-1,BW,1,P.slabLo);
   // call panel by the shaft
   px(SHX-14,yt+34,6,9,'#221c14'); px(SHX-13,yt+36,4,2,waitersAt(f).length?'#ffd970':'#4a3f2a');
   // floor plaque
@@ -694,11 +735,11 @@ function drawFloor(f){
 
 /* ---------- shaft & car ---------- */
 function drawShaft(){
-  const topY=sy(G.floors*FLOOR_H), botY=sy(-14);
+  const topY=sy(G.floors*FLOOR_H), botY=sy(-G.base*FLOOR_H-14);
   const sg=ctx.createLinearGradient(SHX,0,SHX+SHW,0);
   sg.addColorStop(0,P.shaft); sg.addColorStop(.5,P.shaft2); sg.addColorStop(1,P.shaft);
   ctx.fillStyle=sg; ctx.fillRect(SHX,topY,SHW,botY-topY);
-  for(let f=0;f<=G.floors;f++){ const y=sy(f*FLOOR_H); px(SHX,y-6,SHW,3,'#050403'); }
+  for(let f=-G.base;f<=G.floors;f++){ const y=sy(f*FLOOR_H); px(SHX,y-6,SHW,3,'#050403'); }
   px(SHX+4,topY,3,botY-topY,P.rail); px(SHX+SHW-7,topY,3,botY-topY,P.rail);
   px(SHX+5,topY,1,botY-topY,'#4a4038'); px(SHX+SHW-6,topY,1,botY-topY,'#4a4038');
   // car
@@ -781,7 +822,7 @@ function drawBackdrop(){
 
 function drawBuilding(){
   drawBackdrop();
-  for(let f=0;f<G.floors;f++) drawFloor(f);
+  for(let f=-G.base;f<G.floors;f++) drawFloor(f);
   // roof / construction of next floor
   const ry=sy(G.floors*FLOOR_H);
   if(ry>-30){
@@ -792,15 +833,22 @@ function drawBuilding(){
     ctx.fillStyle='rgba(244,232,207,.4)'; ctx.font='10px monospace'; ctx.textAlign='left';
     ctx.fillText('FLOOR '+floorName(G.floors)+' — OPENING SOON  ('+(G.nextFloorAt-G.delivered)+' GUESTS TO GO)',BX+18,ry-40);
   }
-  // outer wall faces
-  px(BX-6,sy(G.floors*FLOOR_H)-6,6,sy(-14)-sy(G.floors*FLOOR_H)+6,'#1b1512');
-  px(BX-6,sy(G.floors*FLOOR_H)-6,2,sy(-14)-sy(G.floors*FLOOR_H)+6,'#2a221c');
+  // outer wall faces (down through the cellars)
+  const wallBot=sy(-G.base*FLOOR_H-14);
+  px(BX-6,sy(G.floors*FLOOR_H)-6,6,wallBot-sy(G.floors*FLOOR_H)+6,'#1b1512');
+  px(BX-6,sy(G.floors*FLOOR_H)-6,2,wallBot-sy(G.floors*FLOOR_H)+6,'#2a221c');
   drawShaft();
-  // street
+  // street flanks the building; below it, bedrock wraps the cellars
   const gy=sy(0);
-  px(0,gy,VW,VH-gy,'#12100d'); px(0,gy-1,VW,2,'#000');
-  px(0,gy+8,VW,2,'#1f1b16');
-  for(let x=8;x<VW;x+=52){ px(x,gy+4,26,2,'#241f18'); }
+  if(gy<VH){
+    px(0,gy,BX-6,VH-gy,'#12100d'); px(BX+BW,gy,VW-BX-BW,VH-gy,'#12100d');
+    px(0,gy-1,BX-6,2,'#000'); px(BX+BW,gy-1,VW-BX-BW,2,'#000');
+    px(0,gy+8,BX-6,2,'#1f1b16'); px(BX+BW,gy+8,VW-BX-BW,2,'#1f1b16');
+    for(let x=8;x<BX-30;x+=52) px(x,gy+4,26,2,'#241f18');
+    for(let x=BX+BW+8;x<VW-26;x+=52) px(x,gy+4,26,2,'#241f18');
+  }
+  const rockY=sy(-G.base*FLOOR_H);
+  px(BX-6,rockY,BW+12,Math.max(0,VH-rockY),'#0a0806');
 }
 
 /* ---------- HUD ---------- */
@@ -816,23 +864,23 @@ function drawDial(){
   fg.addColorStop(0,'#2e2618'); fg.addColorStop(1,'#191510');
   ctx.fillStyle=fg; ctx.beginPath(); ctx.arc(cx,cyd,R-2,Math.PI,0); ctx.fill();
   px(cx-R-14,cyd,R*2+28,4,P.brass); px(cx-R-14,cyd,R*2+28,1,P.brassHi);
-  const top=G.floors-1;
-  for(let f=0;f<G.floors;f++){
-    const a=Math.PI+(f/Math.max(1,top))*Math.PI;
+  const top=G.floors-1, lo=-G.base, span=Math.max(1,top-lo);
+  for(let f=lo;f<G.floors;f++){
+    const a=Math.PI+((f-lo)/span)*Math.PI;
     const tx=cx+Math.cos(a)*(R-9), ty=cyd+Math.sin(a)*(R-9);
-    ctx.fillStyle=P.cream; ctx.font='9px monospace'; ctx.textAlign='center';
-    if(G.floors<=12||f%2===0||f===top) ctx.fillText(floorName(f),tx,ty+3);
+    ctx.fillStyle=f<0?'#c98a5a':P.cream; ctx.font='9px monospace'; ctx.textAlign='center';
+    if(G.floors<=12||f%2===0||f===top||f<0) ctx.fillText(floorName(f),tx,ty+3);
     const ox=cx+Math.cos(a)*(R-3), oy=cyd+Math.sin(a)*(R-3);
     px(ox-1,oy-1,2,2,P.brassLo);
   }
-  const a=Math.PI+(G.pos/Math.max(1,top))*Math.PI;
+  const a=Math.PI+((G.pos-lo)/span)*Math.PI;
   ctx.strokeStyle=P.rust; ctx.lineWidth=3; ctx.beginPath();
   ctx.moveTo(cx-Math.cos(a)*6,cyd-Math.sin(a)*6); ctx.lineTo(cx+Math.cos(a)*(R-6),cyd+Math.sin(a)*(R-6)); ctx.stroke();
   ctx.strokeStyle='#e0785f'; ctx.lineWidth=1; ctx.beginPath();
   ctx.moveTo(cx,cyd); ctx.lineTo(cx+Math.cos(a)*(R-7),cyd+Math.sin(a)*(R-7)); ctx.stroke();
   px(cx-3,cyd-3,6,4,P.brassHi); px(cx-2,cyd-2,3,2,'#fff8e0');
   // flush lamp
-  const ok=flushFloor()>=0;
+  const ok=flushFloor()!==-99;
   px(cx+R+18,cyd-13,12,12,ok?P.ok:'#332a20');
   if(ok) glow(cx+R+24,cyd-7,12,'rgba(127,191,106,.5)');
   ctx.strokeStyle=P.brassLo; ctx.strokeRect(cx+R+17.5,cyd-13.5,13,13);
@@ -873,13 +921,14 @@ function drawHUD(){
   px(mx-4,my-4,20,mh+8,'rgba(13,11,9,.8)');
   ctx.strokeStyle=P.brassLo; ctx.strokeRect(mx-4.5,my-4.5,21,mh+9);
   px(mx+5,my,2,mh,P.rail);
-  for(let f=0;f<G.floors;f++){
-    const y=my+mh-(f/(G.floors-1||1))*mh;
-    px(mx,y-1,12,2,P.rail);
+  const mlo=-G.base, mspan=Math.max(1,G.floors-1-mlo);
+  for(let f=mlo;f<G.floors;f++){
+    const y=my+mh-((f-mlo)/mspan)*mh;
+    px(mx,y-1,12,2,f<0?'#4a3320':P.rail);
     const q=waitersAt(f);
     if(q.length){ const worst=Math.max(...q.map(p=>p.grump)); px(mx,y-6,Math.min(12,q.length*3),4,moodColor(worst)); }
   }
-  const cy2=my+mh-(G.pos/(G.floors-1||1))*mh;
+  const cy2=my+mh-((G.pos-mlo)/mspan)*mh;
   px(mx+2,cy2-4,8,8,P.brassHi); px(mx+4,cy2-2,4,4,P.brass);
   // message banner
   if(G.msgT>0&&G.msg){
