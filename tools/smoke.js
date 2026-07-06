@@ -131,7 +131,7 @@ check('boarding relief lowers grump', T.G.pax[0].state === 'riding' && T.G.pax[0
 // manager's favor: extra strike slot
 T.G.state = 'play'; T.G.up.favor = 1; T.G.strikes = 2;
 T.G.pax = [{id:106, from:1, dest:0, state:'waiting', grump:0.99, angry:false, struck:false, x:200, walk:0, coat:'#000', hat:true, lady:false, skin:'#000'}];
-T.G.graceT = 0;
+T.G.graceT = 0; T.G.doorOpen = false; T.G.doorT = 0; T.G.transfer = null;
 run(2);
 check("manager's favor: survives 3rd strike with 4 slots", T.G.strikes === 3 && T.G.state === 'play');
 T.G.pax = [{id:107, from:1, dest:0, state:'waiting', grump:0.99, angry:false, struck:false, x:200, walk:0, coat:'#000', hat:true, lady:false, skin:'#000'}];
