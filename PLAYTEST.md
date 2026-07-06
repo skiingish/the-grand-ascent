@@ -95,6 +95,12 @@ way to die. Watch for: whether ~12 min is too long before a casual player's
 first death, and whether late-game (30+ floors) needs a soft difficulty
 escalation so runs still end.
 
+**Follow-up (same day):** after Counterweight/Bellboy/Favor joined the pool,
+skilled bots hit the 30-min cap without dying, so the late-game escalation
+came due: difficulty cap raised 1.8 → 2.4 and spawn plateau 3.4 s → 2.9 s.
+Post-tune curve: 11.9 min / FL 13 (sloppy) → ~22 min / FL 27–28 (skilled).
+All runs end; skill ≈ 2× survival.
+
 ## Recommended tuning order
 
 1. Boarding relief + trip-scaled rider patience (kills the unfair deaths)

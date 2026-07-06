@@ -159,6 +159,8 @@ const UPGRADES={
   clerk: {name:'DESK CLERK',    desc:'Hall guests fret 15% slower',       max:3},
   tipjar:{name:'BRASS TIP JAR', desc:'All tips grow by 15%',              max:3},
   favor: {name:"MANAGER'S FAVOR",desc:'One more strike allowed',          max:2},
+  counter:{name:'COUNTERWEIGHT', desc:'Fuller car, faster winch',         max:2},
+  bellboy:{name:'LOBBY BELLBOY', desc:'Swift boarding at the lobby',      max:2},
 };
 function maxStrikes(){ return 3+upLv('favor'); }
 function upLv(id){ return G.up[id]||0; }
@@ -174,7 +176,11 @@ function pickUpgrade(i){
   G.offers=null; G.state='play'; G.graceT=8; S.ding(2);
   say('FLOOR '+floorName(G.floors-1)+' OPEN  ·  '+UPGRADES[id].name+' INSTALLED',3);
 }
-function xferTime(){ return (G.silk?0.24:0.45)*Math.pow(0.88,upLv('gate')); }
+function xferTime(){
+  let t=(G.silk?0.24:0.45)*Math.pow(0.88,upLv('gate'));
+  if(Math.round(G.pos)===0) t*=Math.pow(0.78,upLv('bellboy'));   // the bellboy hustles
+  return t;
+}
 
 /* ---------- passengers ---------- */
 function rnd(n){ return Math.floor(Math.random()*n); }
@@ -236,7 +242,7 @@ addEventListener('keyup',e=>keys[e.code]=false);
 function flushFloor(){
   const f=Math.round(G.pos);
   if(f<0||f>=G.floors) return -1;
-  const tol=0.085*(1+0.5*upLv('magnet'));
+  const tol=0.085*(1+0.25*upLv('magnet'));
   return (Math.abs(G.pos-f)<tol && Math.abs(G.vel)<0.3) ? f : -1;
 }
 function toggleGate(){
@@ -266,7 +272,9 @@ function update(dt){
   const locked=G.doorT>0.02;
   let input=0;
   if(!locked){ if(keys.ArrowUp||keys.KeyW)input+=1; if(keys.ArrowDown||keys.KeyS)input-=1; }
-  const ACC=3.4*(1+0.10*upLv('speed')), MAX=2.7*(1+0.12*upLv('speed')), DRAG=0.85;
+  const load=riders().length/Math.max(1,G.cap);                 // counterweight pulls harder when loaded
+  const cw=1+0.15*upLv('counter')*load;
+  const ACC=3.4*(1+0.10*upLv('speed'))*cw, MAX=2.7*(1+0.12*upLv('speed'))*cw, DRAG=0.85;
   G.vel+=input*ACC*dt;
   if(!input) G.vel*=Math.exp(-DRAG*dt);          // coast — momentum is the game
   if(!input && Math.abs(G.vel)<0.04) G.vel=0;
@@ -275,12 +283,12 @@ function update(dt){
   const top=G.floors-1;
   if(G.pos<0){ G.pos=0; if(G.vel<-0.5)S.clank(); G.vel=0; }
   if(G.pos>top){ G.pos=top; if(G.vel>0.5)S.clank(); G.vel=0; }
-  // floor magnet: near a floor at low speed, the car eases itself level
+  // floor magnet: settles the last inch, but only once you've all but stopped yourself
   if(upLv('magnet')&&!input&&!locked){
     const nf=Math.round(G.pos), off=G.pos-nf;
-    if(nf>=0&&nf<G.floors&&Math.abs(off)<0.14&&Math.abs(G.vel)<0.5){
-      G.pos-=off*Math.min(1,dt*2.2*upLv('magnet'));
-      G.vel*=Math.exp(-3*upLv('magnet')*dt);
+    if(nf>=0&&nf<G.floors&&Math.abs(off)<0.09&&Math.abs(G.vel)<0.22){
+      G.pos-=off*Math.min(1,dt*1.3*upLv('magnet'));
+      G.vel*=Math.exp(-2*upLv('magnet')*dt);
     }
   }
 
@@ -331,7 +339,7 @@ function update(dt){
 
   /* --- patience --- */
   if(G.graceT>0) G.graceT-=dt;                        // ribbon-cutting breather
-  const diff=Math.min(1.8,1+(G.floors-3)*0.055);      // difficulty follows the tower
+  const diff=Math.min(2.4,1+(G.floors-3)*0.055);      // difficulty follows the tower
   const calm=G.graceT>0?0.5:1;
   for(const p of G.pax){
     if(p.state==='waiting'){
@@ -351,7 +359,7 @@ function update(dt){
   if(G.graceT<=0) G.spawnT-=dt;
   if(G.spawnT<=0){
     spawnPassenger();
-    const base=Math.max(3.4,8.5-0.35*G.floors);       // plateau above lift throughput
+    const base=Math.max(2.9,8.5-0.35*G.floors);       // plateau above lift throughput
     G.spawnT=base*(0.7+Math.random()*0.6);
   }
 
@@ -647,7 +655,7 @@ function drawDial(){
   ctx.strokeStyle=P.brassLo; ctx.strokeRect(cx+R+17.5,cyd-13.5,13,13);
   ctx.fillStyle=P.cream; ctx.font='8px monospace'; ctx.textAlign='center'; ctx.fillText('FLUSH',cx+R+24,cyd+9);
   // fine alignment gauge
-  const off=G.pos-Math.round(G.pos), tol=0.085*(1+0.5*upLv('magnet'));
+  const off=G.pos-Math.round(G.pos), tol=0.085*(1+0.25*upLv('magnet'));
   px(cx-R-58,cyd-11,34,10,'#141110'); ctx.strokeStyle=P.brassLo; ctx.strokeRect(cx-R-58.5,cyd-11.5,35,11);
   px(cx-R-42,cyd-10,2,8,'#4a3f2a');
   px(cx-R-58+16+Math.round(off*140),cyd-9,4,6,Math.abs(off)<tol?P.ok:P.warn);

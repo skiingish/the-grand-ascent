@@ -26,7 +26,7 @@ global.AudioContext = function(){ return { currentTime:0,
   destination:{}, sampleRate:44100 }; };
 global.setTimeout = (fn) => {}; // audio scheduling, skip
 
-eval(src + '\n;globalThis.T = { get G(){return G}, set G(v){G=v}, update, draw };');
+eval(src + '\n;globalThis.T = { get G(){return G}, set G(v){G=v}, update, draw, reset };');
 const H = {
   get G(){ return global.T.G },
 };
@@ -139,6 +139,32 @@ run(2);
 check("manager's favor: 4th strike still ends it", T.G.state === 'over');
 fire('keydown','Enter'); fire('keyup','Enter'); // fresh run for remaining tests
 T.G.spawnT = 999; T.G.pax = [];
+
+// counterweight: a loaded car accelerates faster
+function velAfterHold(counterLv, nRiders){
+  T.reset(); fire('keydown','Space'); fire('keyup','Space');
+  T.G.spawnT = 999; T.G.up.counter = counterLv; T.G.cap = 4;
+  for (let i=0;i<nRiders;i++) T.G.pax.push({id:200+i, from:0, dest:2, state:'riding', grump:0, angry:false, struck:false, x:0, walk:0, coat:'#000', hat:true, lady:false, skin:'#000'});
+  run(0.4, ['ArrowUp']);
+  return T.G.vel;
+}
+const vBase = velAfterHold(0, 4), vLoaded = velAfterHold(2, 4), vEmpty = velAfterHold(2, 0);
+check('counterweight: full car outpaces base', vLoaded > vBase*1.15);
+check('counterweight: empty car unaffected', Math.abs(vEmpty - vBase) < 0.01);
+
+// lobby bellboy: boarding at the lobby is faster than upstairs
+function boardTime(floor, bellboyLv){
+  T.reset(); fire('keydown','Space'); fire('keyup','Space');
+  T.G.spawnT = 999; T.G.up.bellboy = bellboyLv;
+  T.G.pax = [{id:300, from:floor, dest:floor===0?1:0, state:'waiting', grump:0, angry:false, struck:false, x:200, walk:0, coat:'#000', hat:true, lady:false, skin:'#000'}];
+  T.G.pos = floor + 0.05; T.G.vel = 0;   // off-flush enough to avoid a Silk Stop
+  fire('keydown','Space'); fire('keyup','Space');
+  let t = 0;
+  while (T.G.pax[0].state !== 'riding' && t < 5){ T.update(0.016); t += 0.016; }
+  return t;
+}
+const tLobby = boardTime(0, 2), tUpstairs = boardTime(1, 2);
+check('bellboy hustles at the lobby only', tLobby < tUpstairs - 0.1);
 
 // esc pauses and resumes
 T.G.state = 'play';

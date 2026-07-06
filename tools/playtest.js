@@ -182,11 +182,11 @@ function playRound2(name, skill, maxMinutes=30){
   let lastStrikes = 0, tSim = 0;
   const TOL = 0.07;
   // upgrade preference: throughput first (a decent human's instinct)
-  const PREF = ['speed','gate','cap','magnet','music','clerk','tipjar'];
+  const PREF = ['speed','counter','gate','bellboy','cap','magnet','favor','music','clerk','tipjar'];
 
   while ((g.state === 'play' || g.state === 'pick') && tSim < maxMinutes*60){
     if (g.state === 'pick'){
-      const ranked = g.offers.map(id => PREF.indexOf(id));
+      const ranked = g.offers.map(id => { const r = PREF.indexOf(id); return r < 0 ? 99 : r; });
       let i = (ranked.length > 1 && ranked[1] < ranked[0]) ? 1 : 0;
       if (!g.offers[i]) i = 0;
       (stats.upgrades = stats.upgrades || []).push(g.offers[i]);

@@ -26,8 +26,10 @@ Single HTML file, plain JS + Canvas, no build step. Open the file, play the game
 - Every 8 deliveries a new floor opens and the game pauses for an **upgrade draft**:
   two options drawn from the pool, pick one (←/→ + Enter, or 1/2).
   Pool: Wider Car (+1 capacity), New Winch (+speed), Oiled Gate (faster doors/boarding),
-  Floor Magnet (car self-settles level), Gramophone (riders calm), Desk Clerk (hall calm),
-  Brass Tip Jar (+tips). Each has a max level.
+  Floor Magnet (settles the last inch once you've nearly stopped), Gramophone (riders calm),
+  Desk Clerk (hall calm), Brass Tip Jar (+tips), Manager's Favor (+1 strike slot),
+  Counterweight (fuller car moves faster), Lobby Bellboy (faster boarding at lobby).
+  Each has a max level.
 - After each opening: 8 s "ribbon-cutting" grace (no spawns, half-rate meters).
 - Difficulty (spawn rate, patience decay) scales with floors opened, plateauing above
   single-lift throughput. Rider patience scales with trip distance; boarding calms guests (−0.2).
