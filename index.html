@@ -1020,11 +1020,12 @@ function drawBackdrop(){
     const x=(i*137)%VW, y=(i*211+((i%5)*77))%(VH-80);
     if((i+Math.floor(G.t))%11>0) px(x,y,1,1,'rgba(244,232,207,'+(i%3?.22:.4)+')');
   }
-  // moon
-  glow(VW-70,54,34,'rgba(240,232,210,.16)');
-  px(VW-78,44,16,16,'#e8e0cc'); px(VW-76,46,5,5,'#cfc7b2'); px(VW-70,52,4,4,'#cfc7b2');
-  // city skyline, slight parallax
+  // moon: lives in the far background, drifting gently with the camera
   const par=G.camY*0.25;
+  const moonY=96+par*0.2;
+  glow(VW-88,moonY+10,34,'rgba(240,232,210,.16)');
+  px(VW-96,moonY,16,16,'#e8e0cc'); px(VW-94,moonY+2,5,5,'#cfc7b2'); px(VW-88,moonY+8,4,4,'#cfc7b2');
+  // city skyline, slight parallax
   const sk=[[0,120,34],[30,88,26],[58,140,30],[86,70,22],[470,110,40],[512,150,34],[548,92,30],[580,130,44]];
   for(const [bx,bh,bw] of sk){
     const byTop=VH-46-bh+par*0.3;
