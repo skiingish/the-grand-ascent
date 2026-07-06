@@ -128,9 +128,18 @@ fire('keydown','Space'); fire('keyup','Space');
 run(2);
 check('boarding relief lowers grump', T.G.pax[0].state === 'riding' && T.G.pax[0].grump < 0.6);
 
+// esc pauses and resumes
+T.G.state = 'play';
+fire('keydown','Escape'); fire('keyup','Escape');
+const pausedPos = T.G.pos; run(1);
+check('esc pauses (world frozen)', T.G.state === 'pause' && T.G.pos === pausedPos);
+fire('keydown','Escape'); fire('keyup','Escape');
+check('esc resumes', T.G.state === 'play');
+
 // draw() must not throw in any state
 try {
   T.draw(); T.G.state="title"; T.draw(); T.G.state="over"; T.draw();
+  T.G.state="pause"; T.draw();
   T.G.state="pick"; T.G.offers=['cap','speed']; T.draw();
   console.log('PASS  draw() renders all states');
 } catch(e){ console.log('FAIL  draw() threw: ' + e.message); fails++; }

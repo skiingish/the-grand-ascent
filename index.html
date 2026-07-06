@@ -56,6 +56,7 @@
   <div class="legend">
     <span><b>&uarr;&darr;</b>lever</span>
     <span><b>space</b>gate</span>
+    <span><b>esc</b>pause</span>
     <span><b>enter</b>start over</span>
   </div>
 <script>
@@ -213,6 +214,11 @@ addEventListener('keydown',e=>{
   if(keys[e.code]) return; keys[e.code]=true; ac();
   if(G.state==='title'&&(e.code==='Space'||e.code==='Enter')){ G.state='play'; say('GOOD MORNING, OPERATOR',2.5); return; }
   if(G.state==='over'&&e.code==='Enter'){ reset(); G.state='play'; return; }
+  if(e.code==='Escape'){
+    if(G.state==='play'){ G.state='pause'; for(const k in keys) keys[k]=false; return; }
+    if(G.state==='pause'){ G.state='play'; return; }
+  }
+  if(G.state==='pause') return;
   if(G.state==='pick'){
     if(e.code==='ArrowLeft'||e.code==='ArrowRight'){ G.pickSel=1-G.pickSel; S.denied(); }
     else if(e.code==='Digit1') pickUpgrade(0);
@@ -710,7 +716,8 @@ function drawOverlay(title,lines){
   lines.forEach((l,i)=>ctx.fillText(l,VW/2,136+i*20));
   if(Math.floor(G.t*2)%2===0){
     ctx.fillStyle=P.brass; ctx.font='12px monospace';
-    ctx.fillText(G.state==='title'?'— PRESS SPACE TO CLOCK IN —':'— PRESS ENTER FOR A NEW SHIFT —',VW/2,VH-66);
+    ctx.fillText(G.state==='title'?'— PRESS SPACE TO CLOCK IN —':
+                 G.state==='pause'?'— PRESS ESC TO RESUME —':'— PRESS ENTER FOR A NEW SHIFT —',VW/2,VH-66);
   }
 }
 
@@ -754,6 +761,13 @@ function draw(){
   drawHUD();
   ctx.restore();
   if(G.state==='pick'){ drawPickOverlay(); }
+  else if(G.state==='pause'){
+    drawOverlay('INTERMISSION',[
+      'The car rests between floors.',
+      '',
+      'Guests are frozen in time — even the grumpy ones.',
+    ]);
+  }
   else if(G.state==='title'){
     drawOverlay('THE GRAND ASCENT',[
       'You are the lift. The lift is you.',
