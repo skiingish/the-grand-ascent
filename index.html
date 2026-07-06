@@ -339,7 +339,7 @@ function update(dt){
 
   /* --- patience --- */
   if(G.graceT>0) G.graceT-=dt;                        // ribbon-cutting breather
-  const diff=Math.min(2.4,1+(G.floors-3)*0.055);      // difficulty follows the tower
+  const diff=Math.min(2.4,1+(G.floors-2)*0.06);       // difficulty follows the tower
   const calm=G.graceT>0?0.5:1;
   for(const p of G.pax){
     if(p.state==='waiting'){
@@ -359,7 +359,7 @@ function update(dt){
   if(G.graceT<=0) G.spawnT-=dt;
   if(G.spawnT<=0){
     spawnPassenger();
-    const base=Math.max(2.9,8.5-0.35*G.floors);       // plateau above lift throughput
+    const base=Math.max(2.9,7.2-0.32*G.floors);       // plateau above lift throughput
     G.spawnT=base*(0.7+Math.random()*0.6);
   }
 
