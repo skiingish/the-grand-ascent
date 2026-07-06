@@ -13,7 +13,7 @@ const ctxStub = new Proxy({}, { get: (t, k) => {
 }, set: () => true });
 const listeners = {};
 global.window = global;
-global.document = { getElementById: () => ({ getContext: () => ctxStub, style: {}, width: 0, height: 0 }) };
+global.document = { getElementById: () => ({ getContext: () => ctxStub, style: {}, width: 0, height: 0, addEventListener(){} }) };
 global.addEventListener = (ev, fn) => { (listeners[ev] = listeners[ev] || []).push(fn); };
 global.localStorage = { _d:{}, getItem(k){return this._d[k]||null}, setItem(k,v){this._d[k]=v} };
 global.innerWidth = 1200; global.innerHeight = 800;

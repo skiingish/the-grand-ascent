@@ -134,6 +134,8 @@ function reset(){
     state:'title', t:0,
     pos:0, vel:0,               // pos in floor units, 0 = lobby
     floors:5, cap:3, base:0, justDug:false,
+    scheme:(G&&G.scheme)||'classic',            // 'classic' | 'wheel' | 'dispatch' — survives restarts
+    autoTarget:null, dev:false, devBuf:'',
     up:{}, offers:null, pickSel:0, graceT:0, silk:false, flawless:0,
     transferDur:0.45,
     doorT:0, doorOpen:false,    // doorT 0..1 openness
@@ -182,6 +184,27 @@ function pickUpgrade(i){
   if(G.justDug){ G.justDug=false; say('WORD IS '+BASEMENTS[G.base-1].name+' JUST OPENED BELOW THE STREET...',3.5); }
   else say('FLOOR '+floorName(G.floors-1)+' OPEN  ·  '+UPGRADES[id].name+' INSTALLED',3);
 }
+/* ---------- DEV level (hidden: type D-E-V at the title) ---------- */
+function startDev(){
+  const scheme=G.scheme; reset();
+  G.scheme=scheme; G.dev=true; G.state='play';
+  G.floors=20; G.base=3; G.cap=6; G.nextFloorAt=8;
+  say('DEV LEVEL  ·  N GUEST · M WACKY · U UPGRADES',4);
+}
+function devCycleUpgrade(id){
+  G.up[id]=(upLv(id)+1)%(UPGRADES[id].max+1);
+  if(id==='cap') G.cap=3+G.up.cap;
+  S.ding(1);
+}
+function devMenuRowAt(mx,my){
+  const keys2=Object.keys(UPGRADES);
+  for(let i=0;i<keys2.length;i++){
+    const ry=118+i*24;
+    if(my>ry-14&&my<ry+6&&mx>VW/2-150&&mx<VW/2+150) return keys2[i];
+  }
+  return null;
+}
+
 function xferTime(){
   let t=(G.silk?0.24:0.45)*Math.pow(0.88,upLv('gate'));
   if(Math.round(G.pos)===0) t*=Math.pow(0.78,upLv('bellboy'));   // the bellboy hustles
@@ -260,15 +283,19 @@ const ARCH_COATS={
   magnifico:['#1d1814','#12100d','#2e2a24'], duchess:['#8a8578','#6f6b60','#a5a094'],
 };
 
-function spawnPassenger(){
+function spawnPassenger(force){
   const top=G.floors-1;
   /* --- who arrives? --- */
   let arch=null;
-  if(G.floors>=CELEB_UNLOCK && Math.random()<1/25 && !G.pax.some(p=>p.arch&&ARCH[p.arch].celeb)){
+  if(force==='wacky'){
+    const pool=Object.keys(ARCH).filter(archEligible);
+    arch=pool[rnd(pool.length)];
+  }
+  else if(force!=='normal'&&G.floors>=CELEB_UNLOCK && Math.random()<1/25 && !G.pax.some(p=>p.arch&&ARCH[p.arch].celeb)){
     const pool=Object.keys(ARCH).filter(k=>ARCH[k].celeb&&archEligible(k));
     if(pool.length) arch=pickWeighted(pool);
   }
-  if(!arch){
+  if(!arch&&force!=='normal'&&force!=='wacky'){
     const t1=G.floors>=TIER_UNLOCK[1]?0.18:0, t2=G.floors>=TIER_UNLOCK[2]?0.15:0, t3=G.floors>=TIER_UNLOCK[3]?0.10:0;
     const r=Math.random(); let tier=0;
     if(r<t3) tier=3; else if(r<t3+t2) tier=2; else if(r<t3+t2+t1) tier=1;
@@ -314,6 +341,7 @@ function riders(){ return G.pax.filter(p=>p.state==='riding'); }
 function strike(p){
   if(p.struck) return;
   p.struck=true; G.strikes++; G.shake=.35; S.huff();
+  if(G.dev){ say('DEV: STORM-OFF ('+G.strikes+') — NO CONSEQUENCES',2); return; }
   say(G.strikes>=maxStrikes()?'THE MANAGEMENT HAS SEEN ENOUGH':'A GUEST STORMS OFF!  ('+G.strikes+'/'+maxStrikes()+')');
   if(G.strikes>=maxStrikes()){
     G.state='over';
@@ -329,13 +357,31 @@ const keys={};
 addEventListener('keydown',e=>{
   if(['ArrowUp','ArrowDown','Space'].includes(e.code)) e.preventDefault();
   if(keys[e.code]) return; keys[e.code]=true; ac();
-  if(G.state==='title'&&(e.code==='Space'||e.code==='Enter')){ G.state='play'; say('GOOD MORNING, OPERATOR',2.5); return; }
+  if(G.state==='title'){
+    if(/^Key[A-Z]$/.test(e.code)){                       // hidden: type DEV for the test level
+      G.devBuf=(G.devBuf+e.code[3]).slice(-3);
+      if(G.devBuf==='DEV'){ startDev(); return; }
+    }
+    if(e.code==='Digit1') G.scheme='classic';
+    else if(e.code==='Digit2') G.scheme='wheel';
+    else if(e.code==='Digit3') G.scheme='dispatch';
+    else if(e.code!=='Space'&&e.code!=='Enter') return;
+    G.state='play';
+    say('GOOD MORNING, OPERATOR'+(G.scheme!=='classic'?'  ·  '+(G.scheme==='wheel'?'WHEEL':'DISPATCH')+' CONTROLS':''),2.5);
+    return;
+  }
   if(G.state==='over'&&e.code==='Enter'){ reset(); G.state='play'; return; }
   if(e.code==='Escape'){
     if(G.state==='play'){ G.state='pause'; for(const k in keys) keys[k]=false; return; }
     if(G.state==='pause'){ G.state='play'; return; }
   }
   if(G.state==='pause') return;
+  if(G.state==='devmenu'){ if(e.code==='KeyU'||e.code==='Escape') G.state='play'; return; }
+  if(G.state==='play'&&G.dev){
+    if(e.code==='KeyN'){ spawnPassenger('normal'); return; }
+    if(e.code==='KeyM'){ spawnPassenger('wacky'); return; }
+    if(e.code==='KeyU'){ G.state='devmenu'; return; }
+  }
   if(G.state==='pick'){
     if(e.code==='ArrowLeft'||e.code==='ArrowRight'){ G.pickSel=1-G.pickSel; S.denied(); }
     else if(e.code==='Digit1') pickUpgrade(0);
@@ -347,6 +393,61 @@ addEventListener('keydown',e=>{
   if(e.code==='Space') toggleGate();
 });
 addEventListener('keyup',e=>keys[e.code]=false);
+
+/* scroll-wheel lever: each notch is a shove; momentum still rules */
+cv.addEventListener('wheel',e=>{
+  if(G.scheme!=='wheel'||G.state!=='play') return;
+  e.preventDefault(); ac();
+  if(G.doorT>0.02) return;                              // interlock holds
+  G.vel+=-Math.sign(e.deltaY)*0.38;
+},{passive:false});
+
+/* mouse: menus are clickable everywhere; in dispatch scheme, floors too */
+const TITLE_SCHEME_ROWS=[[5,'classic'],[6,'wheel'],[7,'dispatch']];  // line indices in the title overlay
+cv.addEventListener('mousedown',e=>{
+  ac();
+  const r=cv.getBoundingClientRect();
+  const mx=(e.clientX-r.left)/r.width*VW, my=(e.clientY-r.top)/r.height*VH;
+  if(G.state==='title'){
+    for(const [row,scheme] of TITLE_SCHEME_ROWS){
+      const ry=136+row*20;
+      if(my>ry-13&&my<ry+5&&mx>VW/2-190&&mx<VW/2+190){
+        G.scheme=scheme; G.state='play';
+        say('GOOD MORNING, OPERATOR'+(scheme!=='classic'?'  ·  '+(scheme==='wheel'?'WHEEL':'DISPATCH')+' CONTROLS':''),2.5);
+        return;
+      }
+    }
+    return;
+  }
+  if(G.state==='over'){ reset(); G.state='play'; return; }
+  if(G.state==='pause'){ G.state='play'; return; }
+  if(G.state==='pick'){
+    const cw=210,ch=124,cy0=140;
+    for(let i=0;i<(G.offers||[]).length;i++){
+      const x=VW/2+(i===0?-cw-14:14);
+      if(mx>x&&mx<x+cw&&my>cy0&&my<cy0+ch){ pickUpgrade(i); return; }
+    }
+    return;
+  }
+  if(G.state==='devmenu'){
+    const hit=devMenuRowAt(mx,my);
+    if(hit) devCycleUpgrade(hit);
+    return;
+  }
+  if(G.state==='play'&&G.scheme==='dispatch'){
+    let f;
+    if(mx>VW-34){                                        // minimap strip
+      const mh=VH-120,my0=64,mlo=-G.base,mspan=Math.max(1,G.floors-1-mlo);
+      f=Math.round(((my0+mh-my)/mh)*mspan+mlo);
+    } else {
+      f=Math.floor(((VH-50-my)+G.camY)/FLOOR_H);
+    }
+    if(f>=-G.base&&f<G.floors){
+      G.autoTarget=f;
+      if(G.doorOpen&&!G.transfer) toggleGate();          // close up and go
+    }
+  }
+});
 
 function flushFloor(){
   const f=Math.round(G.pos);
@@ -364,7 +465,7 @@ function toggleGate(){
   } else {
     const f=flushFloor();
     if(f===-99){ S.denied(); say('LINE UP THE CAR, OPERATOR!',1.2); return; }
-    G.silk=Math.abs(G.pos-f)<0.035;                    // first-touch perfect stop
+    G.silk=Math.abs(G.pos-f)<0.035&&G.scheme!=='dispatch'; // no silk bonus when the car parks itself
     G.doorOpen=true; G.vel=0; G.pos=f; S.gate(true);
     if(G.silk){ S.ding(3); say('SILK STOP — SWIFT SERVICE!',1); }
     if(f>G.maxFloor) G.maxFloor=f;
@@ -379,11 +480,29 @@ function update(dt){
 
   /* --- lever & physics --- */
   const locked=G.doorT>0.02;
-  let input=0;
-  if(!locked){ if(keys.ArrowUp||keys.KeyW)input+=1; if(keys.ArrowDown||keys.KeyS)input-=1; }
   const load=riders().length/Math.max(1,G.cap);                 // counterweight pulls harder when loaded
   const cw=1+0.15*upLv('counter')*load;
   const ACC=3.4*(1+0.10*upLv('speed'))*cw, MAX=2.7*(1+0.12*upLv('speed'))*cw, DRAG=0.85;
+  let input=0;
+  if(!locked){
+    if(G.scheme==='dispatch'){
+      // autopilot: the routing IS the game — car drives itself to the clicked floor
+      if(G.autoTarget!==null){
+        const d=G.autoTarget-G.pos, ad=Math.abs(d), dir=Math.sign(d);
+        const bd=(G.vel*G.vel)/(2*ACC);
+        if(ad<0.02&&Math.abs(G.vel)<0.15){
+          G.pos=G.autoTarget; G.vel=0; const f=G.autoTarget; G.autoTarget=null;
+          G.silk=false; G.doorOpen=true; G.doorT=Math.max(G.doorT,0.02); S.gate(true);   // doors open themselves
+          if(f>G.maxFloor) G.maxFloor=f;
+        }
+        else if(Math.sign(G.vel)===dir&&bd>=ad-0.02) input=-dir;
+        else if(Math.abs(G.vel)<(ad<0.5?0.55:MAX)) input=dir;
+      }
+    } else {
+      if(keys.ArrowUp||keys.KeyW)input+=1;
+      if(keys.ArrowDown||keys.KeyS)input-=1;
+    }
+  }
   G.vel+=input*ACC*dt;
   if(!input) G.vel*=Math.exp(-DRAG*dt);          // coast — momentum is the game
   if(!input && Math.abs(G.vel)<0.04) G.vel=0;
@@ -478,8 +597,8 @@ function update(dt){
   }
   G.pax=G.pax.filter(p=>p.state!=='gone');
 
-  /* --- spawning (paused during the ribbon-cutting) --- */
-  if(G.graceT<=0) G.spawnT-=dt;
+  /* --- spawning (paused during the ribbon-cutting; manual-only in dev) --- */
+  if(G.graceT<=0&&!G.dev) G.spawnT-=dt;
   if(G.spawnT<=0){
     spawnPassenger();
     const base=Math.max(3.05,7.2-0.32*G.floors);      // plateau above lift throughput
@@ -839,6 +958,11 @@ function drawBuilding(){
   px(BX-6,sy(G.floors*FLOOR_H)-6,6,wallBot-sy(G.floors*FLOOR_H)+6,'#1b1512');
   px(BX-6,sy(G.floors*FLOOR_H)-6,2,wallBot-sy(G.floors*FLOOR_H)+6,'#2a221c');
   drawShaft();
+  // dispatcher target marker: pulsing chevron beside the shaft
+  if(G.scheme==='dispatch'&&G.autoTarget!==null){
+    const tym=sy(G.autoTarget*FLOOR_H), pulse=Math.floor(G.t*4)%2;
+    px(SHX-12-pulse*2,tym-14,8,3,P.warn); px(SHX-10-pulse*2,tym-11,6,3,P.warn); px(SHX-8-pulse*2,tym-8,4,3,P.warn);
+  }
   // street flanks the building; below it, bedrock wraps the cellars
   const gy=sy(0);
   if(gy<VH){
@@ -960,7 +1084,7 @@ function drawOverlay(title,lines){
   lines.forEach((l,i)=>ctx.fillText(l,VW/2,136+i*20));
   if(Math.floor(G.t*2)%2===0){
     ctx.fillStyle=P.brass; ctx.font='12px monospace';
-    ctx.fillText(G.state==='title'?'— PRESS SPACE TO CLOCK IN —':
+    ctx.fillText(G.state==='title'?'— PRESS 1, 2 OR 3 TO CLOCK IN —':
                  G.state==='pause'?'— PRESS ESC TO RESUME —':'— PRESS ENTER FOR A NEW SHIFT —',VW/2,VH-66);
   }
 }
@@ -998,13 +1122,40 @@ function drawPickOverlay(){
   }
 }
 
+function drawDevMenu(){
+  ctx.fillStyle='rgba(13,11,9,.86)'; ctx.fillRect(0,0,VW,VH);
+  ctx.fillStyle=P.brassHi; ctx.font='18px Limelight, monospace'; ctx.textAlign='center';
+  ctx.fillText('DEV — UPGRADE EDITOR',VW/2,74);
+  ctx.font='10px monospace'; ctx.fillStyle=P.cream;
+  ctx.fillText('CLICK A ROW TO CYCLE ITS LEVEL  ·  U OR ESC TO CLOSE',VW/2,94);
+  const keys2=Object.keys(UPGRADES);
+  keys2.forEach((id,i)=>{
+    const u=UPGRADES[id], ry=118+i*24;
+    px(VW/2-150,ry-14,300,20,'rgba(30,25,20,.9)');
+    ctx.strokeStyle=P.brassLo; ctx.strokeRect(VW/2-150.5,ry-14.5,301,21);
+    ctx.fillStyle=P.brass; ctx.font='10px monospace'; ctx.textAlign='left';
+    ctx.fillText(u.name,VW/2-140,ry);
+    for(let k=0;k<u.max;k++){
+      px(VW/2+60+k*14,ry-8,10,10,k<upLv(id)?P.brass:'#2a231c');
+      ctx.strokeStyle=P.brassLo; ctx.strokeRect(VW/2+60.5+k*14,ry-8.5,10,10);
+    }
+  });
+  ctx.fillStyle='rgba(244,232,207,.6)'; ctx.textAlign='center';
+  ctx.fillText('FLOORS '+G.floors+'  ·  BASEMENTS '+G.base+'  ·  CAP '+G.cap+'  ·  N/M SPAWN GUESTS IN PLAY',VW/2,118+keys2.length*24+6);
+}
+
 function draw(){
   ctx.save();
   if(G.shake>0) ctx.translate(rnd(4)-2,rnd(4)-2);
   drawBuilding();
   drawHUD();
   ctx.restore();
-  if(G.state==='pick'){ drawPickOverlay(); }
+  if(G.dev&&G.state!=='devmenu'){
+    ctx.fillStyle=P.bad; ctx.font='10px monospace'; ctx.textAlign='center';
+    ctx.fillText('· DEV ·',VW/2,VH-8);
+  }
+  if(G.state==='devmenu'){ drawDevMenu(); }
+  else if(G.state==='pick'){ drawPickOverlay(); }
   else if(G.state==='pause'){
     drawOverlay('INTERMISSION',[
       'The car rests between floors.',
@@ -1014,15 +1165,15 @@ function draw(){
   }
   else if(G.state==='title'){
     drawOverlay('THE GRAND ASCENT',[
-      'You are the lift. The lift is you.',
+      'Deliver guests before they boil over — 3 walk-outs and',
+      'the management lets you go. Happy guests tip; deliveries',
+      'open new floors, each adding one improvement you choose.',
       '',
-      'ARROWS drive the lever — the car has momentum.',
-      'SPACE works the gate — only when flush with a floor.',
-      'Deliver guests before they boil over. 3 walk-outs and',
-      'the management lets you go.',
+      'CHOOSE YOUR CONTROLS TO CLOCK IN:',
+      '1 — CLASSIC    arrows drive the lever, space works the gate',
+      '2 — WHEEL      scroll shoves the car, space works the gate',
+      '3 — DISPATCH   click a floor, the car drives itself',
       '',
-      'Happy guests tip. Deliveries open new floors, and',
-      'every opening lets you install one improvement.',
       'BEST: FLOOR '+floorName(G.hs.floor)+'  ·  $'+G.hs.tips.toFixed(2),
     ]);
   } else if(G.state==='over'){
