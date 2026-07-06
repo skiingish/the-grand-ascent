@@ -26,7 +26,7 @@ global.AudioContext = function(){ return { currentTime:0,
   destination:{}, sampleRate:44100 }; };
 global.setTimeout = (fn) => {}; // audio scheduling, skip
 
-eval(src + '\n;globalThis.T = { get G(){return G}, set G(v){G=v}, update, draw, reset };');
+eval(src + '\n;globalThis.T = { get G(){return G}, set G(v){G=v}, update, draw, reset, devCycleUpgrade };');
 const H = {
   get G(){ return global.T.G },
 };
@@ -241,11 +241,36 @@ run(6);
 check('autopilot arrives flush and opens doors', Math.abs(T.G.pos - 3) < 0.01 && T.G.doorOpen === true);
 T.G.scheme = 'classic';
 
+// DEV level: hidden D-E-V combo at the title
+T.reset();
+['KeyD','KeyE','KeyV'].forEach(k => { fire('keydown',k); fire('keyup',k); });
+check('typing DEV at title enters dev level', T.G.dev === true && T.G.state === 'play' && T.G.floors === 20 && T.G.base === 3);
+check('dev: no auto-spawning', (run(4), T.G.pax.length === 0));
+fire('keydown','KeyN'); fire('keyup','KeyN');
+check('dev: N spawns a normal guest', T.G.pax.length === 1 && !T.G.pax[0].arch);
+fire('keydown','KeyM'); fire('keyup','KeyM');
+check('dev: M spawns a wacky guest', T.G.pax.length === 2 && !!T.G.pax[1].arch);
+fire('keydown','KeyU'); fire('keyup','KeyU');
+check('dev: U opens upgrade editor', T.G.state === 'devmenu');
+T.devCycleUpgrade('cap'); T.devCycleUpgrade('cap');
+check('dev: cycling cap upgrade syncs capacity', T.G.up.cap === 2 && T.G.cap === 5);
+fire('keydown','Escape'); fire('keyup','Escape');
+check('dev: esc closes editor back to play', T.G.state === 'play');
+T.G.pax = [{id:600, from:1, dest:0, state:'waiting', grump:0.99, angry:false, struck:false, waitT:0, patMul:1, tipMul:1, x:200, walk:0, coat:['#000','#000','#000'], hat:false, lady:false, skin:['#000','#000'], hair:'#000', bag:false},
+           {id:601, from:2, dest:0, state:'waiting', grump:0.99, angry:false, struck:false, waitT:0, patMul:1, tipMul:1, x:200, walk:0, coat:['#000','#000','#000'], hat:false, lady:false, skin:['#000','#000'], hair:'#000', bag:false},
+           {id:602, from:3, dest:0, state:'waiting', grump:0.99, angry:false, struck:false, waitT:0, patMul:1, tipMul:1, x:200, walk:0, coat:['#000','#000','#000'], hat:false, lady:false, skin:['#000','#000'], hair:'#000', bag:false},
+           {id:603, from:4, dest:0, state:'waiting', grump:0.99, angry:false, struck:false, waitT:0, patMul:1, tipMul:1, x:200, walk:0, coat:['#000','#000','#000'], hat:false, lady:false, skin:['#000','#000'], hair:'#000', bag:false}];
+T.G.doorOpen = false; T.G.doorT = 0; T.G.transfer = null; T.G.graceT = 0; T.G.pos = 10;
+run(3);
+check('dev: strikes never end the run', T.G.strikes >= 4 && T.G.state === 'play');
+T.reset();
+
 // draw() must not throw in any state
 try {
   T.draw(); T.G.state="title"; T.draw(); T.G.state="over"; T.draw();
   T.G.state="pause"; T.draw();
   T.G.state="pick"; T.G.offers=['cap','speed']; T.draw();
+  T.G.state="devmenu"; T.draw();
   console.log('PASS  draw() renders all states');
 } catch(e){ console.log('FAIL  draw() threw: ' + e.message); fails++; }
 
