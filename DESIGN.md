@@ -22,8 +22,17 @@ Single HTML file, plain JS + Canvas, no build step. Open the file, play the game
   stops and snubs them. Maxed = storm off + 1 strike. **3 strikes = run over.**
 
 ## Progression (endless)
-- Start: 6 floors, capacity 4.
-- Every N deliveries a new floor opens (ding, scaffolding lifts). Capacity grows with the tower.
+- Start: 3 floors, capacity 3.
+- Every 8 deliveries a new floor opens and the game pauses for an **upgrade draft**:
+  two options drawn from the pool, pick one (←/→ + Enter, or 1/2).
+  Pool: Wider Car (+1 capacity), New Winch (+speed), Oiled Gate (faster doors/boarding),
+  Floor Magnet (car self-settles level), Gramophone (riders calm), Desk Clerk (hall calm),
+  Brass Tip Jar (+tips). Each has a max level.
+- After each opening: 8 s "ribbon-cutting" grace (no spawns, half-rate meters).
+- Difficulty (spawn rate, patience decay) scales with floors opened, plateauing above
+  single-lift throughput. Rider patience scales with trip distance; boarding calms guests (−0.2).
+- **Silk Stop**: first-touch flush within a tight tolerance = faster boarding + 25% tip bonus.
+- **Commendations**: every 20 flawless deliveries withdraws a strike (or pays $5 if clean).
 - Camera follows the car; minimap strip shows the whole shaft with waiting passengers colored by mood.
 
 ## Scoring

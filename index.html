@@ -132,7 +132,9 @@ function reset(){
   G={
     state:'title', t:0,
     pos:0, vel:0,               // pos in floor units, 0 = lobby
-    floors:6, cap:4,
+    floors:3, cap:3,
+    up:{}, offers:null, pickSel:0, graceT:0, silk:false, flawless:0,
+    transferDur:0.45,
     doorT:0, doorOpen:false,    // doorT 0..1 openness
     transfer:null, transferT:0, // passenger mid-doorway
     pax:[], spawnT:3, spawnId:0,
@@ -145,6 +147,31 @@ reset();
 
 function say(txt,t=2.4){ G.msg=txt; G.msgT=t; }
 function floorName(f){ return f===0?'L':''+(f+0); }
+
+/* ---------- upgrades (drafted 1-of-2 when a floor opens) ---------- */
+const UPGRADES={
+  cap:   {name:'WIDER CAR',     desc:'One more guest fits aboard',        max:5},
+  speed: {name:'NEW WINCH',     desc:'The car pulls 12% faster',          max:4},
+  gate:  {name:'OILED GATE',    desc:'Gate & boarding move quicker',      max:3},
+  magnet:{name:'FLOOR MAGNET',  desc:'Car settles itself level',          max:2},
+  music: {name:'GRAMOPHONE',    desc:'Riders stay calm 25% longer',       max:3},
+  clerk: {name:'DESK CLERK',    desc:'Hall guests fret 15% slower',       max:3},
+  tipjar:{name:'BRASS TIP JAR', desc:'All tips grow by 15%',              max:3},
+};
+function upLv(id){ return G.up[id]||0; }
+function rollOffers(){
+  const pool=Object.keys(UPGRADES).filter(id=>upLv(id)<UPGRADES[id].max);
+  for(let i=pool.length-1;i>0;i--){ const j=rnd(i+1); [pool[i],pool[j]]=[pool[j],pool[i]]; }
+  return pool.slice(0,2);
+}
+function pickUpgrade(i){
+  const id=G.offers&&G.offers[i]; if(!id) return;
+  G.up[id]=upLv(id)+1;
+  if(id==='cap') G.cap=Math.min(9,G.cap+1);
+  G.offers=null; G.state='play'; G.graceT=8; S.ding(2);
+  say('FLOOR '+floorName(G.floors-1)+' OPEN  ·  '+UPGRADES[id].name+' INSTALLED',3);
+}
+function xferTime(){ return (G.silk?0.24:0.45)*Math.pow(0.88,upLv('gate')); }
 
 /* ---------- passengers ---------- */
 function rnd(n){ return Math.floor(Math.random()*n); }
@@ -186,6 +213,13 @@ addEventListener('keydown',e=>{
   if(keys[e.code]) return; keys[e.code]=true; ac();
   if(G.state==='title'&&(e.code==='Space'||e.code==='Enter')){ G.state='play'; say('GOOD MORNING, OPERATOR',2.5); return; }
   if(G.state==='over'&&e.code==='Enter'){ reset(); G.state='play'; return; }
+  if(G.state==='pick'){
+    if(e.code==='ArrowLeft'||e.code==='ArrowRight'){ G.pickSel=1-G.pickSel; S.denied(); }
+    else if(e.code==='Digit1') pickUpgrade(0);
+    else if(e.code==='Digit2') pickUpgrade(1);
+    else if(e.code==='Enter'||e.code==='Space') pickUpgrade(G.pickSel);
+    return;
+  }
   if(G.state!=='play') return;
   if(e.code==='Space') toggleGate();
 });
@@ -194,7 +228,8 @@ addEventListener('keyup',e=>keys[e.code]=false);
 function flushFloor(){
   const f=Math.round(G.pos);
   if(f<0||f>=G.floors) return -1;
-  return (Math.abs(G.pos-f)<0.085 && Math.abs(G.vel)<0.3) ? f : -1;
+  const tol=0.085*(1+0.5*upLv('magnet'));
+  return (Math.abs(G.pos-f)<tol && Math.abs(G.vel)<0.3) ? f : -1;
 }
 function toggleGate(){
   if(G.doorOpen){
@@ -206,7 +241,9 @@ function toggleGate(){
   } else {
     const f=flushFloor();
     if(f<0){ S.denied(); say('LINE UP THE CAR, OPERATOR!',1.2); return; }
+    G.silk=Math.abs(G.pos-f)<0.035;                    // first-touch perfect stop
     G.doorOpen=true; G.vel=0; G.pos=f; S.gate(true);
+    if(G.silk){ S.ding(3); say('SILK STOP — SWIFT SERVICE!',1); }
     if(f>G.maxFloor) G.maxFloor=f;
   }
 }
@@ -221,7 +258,7 @@ function update(dt){
   const locked=G.doorT>0.02;
   let input=0;
   if(!locked){ if(keys.ArrowUp||keys.KeyW)input+=1; if(keys.ArrowDown||keys.KeyS)input-=1; }
-  const ACC=3.4, MAX=2.7, DRAG=0.85;
+  const ACC=3.4*(1+0.10*upLv('speed')), MAX=2.7*(1+0.12*upLv('speed')), DRAG=0.85;
   G.vel+=input*ACC*dt;
   if(!input) G.vel*=Math.exp(-DRAG*dt);          // coast — momentum is the game
   if(!input && Math.abs(G.vel)<0.04) G.vel=0;
@@ -230,9 +267,17 @@ function update(dt){
   const top=G.floors-1;
   if(G.pos<0){ G.pos=0; if(G.vel<-0.5)S.clank(); G.vel=0; }
   if(G.pos>top){ G.pos=top; if(G.vel>0.5)S.clank(); G.vel=0; }
+  // floor magnet: near a floor at low speed, the car eases itself level
+  if(upLv('magnet')&&!input&&!locked){
+    const nf=Math.round(G.pos), off=G.pos-nf;
+    if(nf>=0&&nf<G.floors&&Math.abs(off)<0.14&&Math.abs(G.vel)<0.5){
+      G.pos-=off*Math.min(1,dt*2.2*upLv('magnet'));
+      G.vel*=Math.exp(-3*upLv('magnet')*dt);
+    }
+  }
 
   /* --- gate anim --- */
-  G.doorT+=((G.doorOpen?1:0)-G.doorT)*Math.min(1,dt*7);
+  G.doorT+=((G.doorOpen?1:0)-G.doorT)*Math.min(1,dt*(7+2.5*upLv('gate')));
   if(G.doorOpen&&G.doorT>0.99) G.doorT=1;
 
   /* --- doorway traffic (one at a time) --- */
@@ -245,36 +290,48 @@ function update(dt){
         if(p.state==='exiting'){
           p.state='gone';
           if(!p.angry){
-            const tip=0.5+4.5*Math.pow(Math.max(0,1-p.grump),1.4);
+            let tip=(0.5+4.5*Math.pow(Math.max(0,1-p.grump),1.4))*(1+0.15*upLv('tipjar'));
+            if(G.silk) tip*=1.25;                       // silk stops pay better
             G.tips+=tip; G.delivered++; S.coin();
-            /* the tower grows */
+            /* commendations: flawless streaks buy back strikes */
+            G.flawless++;
+            if(G.flawless>=20){
+              G.flawless=0;
+              if(G.strikes>0){ G.strikes--; S.fanfare(); say('COMMENDATION! THE MANAGER WITHDRAWS A STRIKE',3); }
+              else { G.tips+=5; S.ding(1); say('COMMENDATION! A CRISP $5 FROM THE MANAGER',3); }
+            }
+            /* the tower grows — pause for an upgrade draft */
             if(G.delivered>=G.nextFloorAt){
               G.nextFloorAt+=8; G.floors++;
-              G.cap=Math.min(8,4+Math.floor((G.floors-6)/2));
-              S.fanfare(); say('FLOOR '+floorName(G.floors-1)+' NOW OPEN'+(G.cap>4?'  ·  CAR HOLDS '+G.cap:''),3);
+              G.offers=rollOffers(); G.pickSel=0; S.fanfare();
+              if(G.offers.length) G.state='pick';
+              else { G.graceT=8; say('FLOOR '+floorName(G.floors-1)+' NOW OPEN',3); }
             }
           }
         }
-        else if(p.state==='boarding'){ p.state='riding'; }
+        else if(p.state==='boarding'){ p.state='riding'; p.grump=Math.max(0,p.grump-0.2); }
       }
     } else {
       const out=riders().find(p=>p.dest===f||p.angry);
-      if(out){ out.state='exiting'; G.transfer=out; G.transferT=0.45; }
+      if(out){ out.state='exiting'; G.transfer=out; G.transferDur=xferTime(); G.transferT=G.transferDur; }
       else if(riders().length<G.cap){
         const inn=waitersAt(f)[0];
-        if(inn){ inn.state='boarding'; G.transfer=inn; G.transferT=0.45; }
+        if(inn){ inn.state='boarding'; G.transfer=inn; G.transferDur=xferTime(); G.transferT=G.transferDur; }
       }
     }
   }
 
   /* --- patience --- */
-  const diff=Math.min(1.8,1+G.delivered*0.008);
+  if(G.graceT>0) G.graceT-=dt;                        // ribbon-cutting breather
+  const diff=Math.min(1.8,1+(G.floors-3)*0.055);      // difficulty follows the tower
+  const calm=G.graceT>0?0.5:1;
   for(const p of G.pax){
     if(p.state==='waiting'){
-      p.grump+=dt/40*diff;
+      p.grump+=dt/40*diff*calm*Math.pow(0.85,upLv('clerk'));
       if(p.grump>=1&&!p.struck){ p.state='storming'; p.walk=0; strike(p); }
     } else if(p.state==='riding'){
-      p.grump+=dt/85*diff;
+      // longer trips come with longer fuses — guests know the penthouse is far
+      p.grump+=dt/(85*(1+0.12*Math.abs(p.dest-p.from)))*diff*calm*Math.pow(0.75,upLv('music'));
       if(p.grump>=1&&!p.angry){ p.angry=true; strike(p); say('A GUEST IS FUMING IN THE CAR!',2); }
     } else if(p.state==='storming'){
       p.walk+=dt; if(p.walk>1.6) p.state='gone';
@@ -282,11 +339,11 @@ function update(dt){
   }
   G.pax=G.pax.filter(p=>p.state!=='gone');
 
-  /* --- spawning --- */
-  G.spawnT-=dt;
+  /* --- spawning (paused during the ribbon-cutting) --- */
+  if(G.graceT<=0) G.spawnT-=dt;
   if(G.spawnT<=0){
     spawnPassenger();
-    const base=Math.max(2.6,7.5-G.delivered*0.09);
+    const base=Math.max(3.4,8.5-0.35*G.floors);       // plateau above lift throughput
     G.spawnT=base*(0.7+Math.random()*0.6);
   }
 
@@ -472,7 +529,7 @@ function drawShaft(){
   });
   // doorway transfer walker
   if(G.transfer){
-    const p=G.transfer, prog=1-G.transferT/0.45;
+    const p=G.transfer, prog=1-G.transferT/(G.transferDur||0.45);
     const fromX=p.state==='boarding'?SHX-20:carX+carW/2, toX=p.state==='boarding'?carX+carW/2:SHX-26;
     drawPerson(fromX+(toX-fromX)*prog,cy-7,p,Math.floor(G.t*10));
   }
@@ -582,10 +639,10 @@ function drawDial(){
   ctx.strokeStyle=P.brassLo; ctx.strokeRect(cx+R+17.5,cyd-13.5,13,13);
   ctx.fillStyle=P.cream; ctx.font='8px monospace'; ctx.textAlign='center'; ctx.fillText('FLUSH',cx+R+24,cyd+9);
   // fine alignment gauge
-  const off=G.pos-Math.round(G.pos);
+  const off=G.pos-Math.round(G.pos), tol=0.085*(1+0.5*upLv('magnet'));
   px(cx-R-58,cyd-11,34,10,'#141110'); ctx.strokeStyle=P.brassLo; ctx.strokeRect(cx-R-58.5,cyd-11.5,35,11);
   px(cx-R-42,cyd-10,2,8,'#4a3f2a');
-  px(cx-R-58+16+Math.round(off*140),cyd-9,4,6,Math.abs(off)<0.085?P.ok:P.warn);
+  px(cx-R-58+16+Math.round(off*140),cyd-9,4,6,Math.abs(off)<tol?P.ok:P.warn);
   ctx.fillStyle=P.cream; ctx.fillText('LEVEL',cx-R-41,cyd+9);
 }
 function plaque(x,y,w,h){
@@ -594,12 +651,14 @@ function plaque(x,y,w,h){
 }
 function drawHUD(){
   ctx.font='11px monospace';
-  plaque(8,8,120,52);
+  plaque(8,8,132,68);
   ctx.fillStyle=P.brassHi; ctx.textAlign='left';
   ctx.fillText('TIPS  $'+G.tips.toFixed(2),16,24);
   ctx.fillStyle=P.cream;
   ctx.fillText('CAR   '+riders().length+'/'+G.cap,16,39);
   ctx.fillText('BEST  FL '+floorName(G.maxFloor),16,54);
+  ctx.fillStyle=G.flawless>=15?P.brassHi:P.cream;
+  ctx.fillText('MERIT '+G.flawless+'/20',16,69);
   // strikes
   plaque(VW-96,8,88,34);
   for(let i=0;i<3;i++){
@@ -655,13 +714,47 @@ function drawOverlay(title,lines){
   }
 }
 
+function drawPickOverlay(){
+  ctx.fillStyle='rgba(13,11,9,.82)'; ctx.fillRect(0,0,VW,VH);
+  ctx.fillStyle=P.brassHi; ctx.font='20px Limelight, monospace'; ctx.textAlign='center';
+  ctx.fillText('FLOOR '+floorName(G.floors-1)+' NOW OPEN',VW/2,86);
+  ctx.font='11px monospace'; ctx.fillStyle=P.cream;
+  ctx.fillText('THE MANAGER OFFERS AN IMPROVEMENT — CHOOSE ONE',VW/2,110);
+  const cw=210, ch=124, cy0=140;
+  (G.offers||[]).forEach((id,i)=>{
+    const u=UPGRADES[id], x=VW/2+(i===0?-cw-14:14), sel=G.pickSel===i;
+    px(x,cy0,cw,ch,sel?'rgba(46,38,24,.95)':'rgba(20,17,14,.95)');
+    ctx.strokeStyle=sel?P.brassHi:P.brassLo; ctx.lineWidth=sel?2:1;
+    ctx.strokeRect(x+.5,cy0+.5,cw-1,ch-1);
+    if(sel){ ctx.strokeStyle=P.brass; ctx.strokeRect(x+4.5,cy0+4.5,cw-9,ch-9); }
+    ctx.fillStyle=sel?P.brassHi:P.brass; ctx.font='15px Limelight, monospace'; ctx.textAlign='center';
+    ctx.fillText(u.name,x+cw/2,cy0+38);
+    px(x+cw/2-40,cy0+50,80,1,P.brassLo);
+    ctx.fillStyle=P.cream; ctx.font='11px monospace';
+    ctx.fillText(u.desc,x+cw/2,cy0+72);
+    // level pips
+    for(let k=0;k<u.max;k++){
+      const owned=k<upLv(id);
+      px(x+cw/2-(u.max*12)/2+k*12,cy0+90,8,8,owned?P.brass:'#2a231c');
+      ctx.strokeStyle=P.brassLo; ctx.strokeRect(x+cw/2-(u.max*12)/2+k*12+.5,cy0+90.5,8,8);
+    }
+    ctx.fillStyle=sel?P.brassHi:'rgba(244,232,207,.5)'; ctx.font='10px monospace';
+    ctx.fillText('PRESS '+(i+1),x+cw/2,cy0+ch-10);
+  });
+  if(Math.floor(G.t*2)%2===0){
+    ctx.fillStyle=P.brass; ctx.font='11px monospace';
+    ctx.fillText('←/→ CHOOSE  ·  ENTER TO INSTALL',VW/2,cy0+ch+34);
+  }
+}
+
 function draw(){
   ctx.save();
   if(G.shake>0) ctx.translate(rnd(4)-2,rnd(4)-2);
   drawBuilding();
   drawHUD();
   ctx.restore();
-  if(G.state==='title'){
+  if(G.state==='pick'){ drawPickOverlay(); }
+  else if(G.state==='title'){
     drawOverlay('THE GRAND ASCENT',[
       'You are the lift. The lift is you.',
       '',
@@ -670,7 +763,8 @@ function draw(){
       'Deliver guests before they boil over. 3 walk-outs and',
       'the management lets you go.',
       '',
-      'Happy guests tip. Tips build new floors.',
+      'Happy guests tip. Deliveries open new floors, and',
+      'every opening lets you install one improvement.',
       'BEST: FLOOR '+floorName(G.hs.floor)+'  ·  $'+G.hs.tips.toFixed(2),
     ]);
   } else if(G.state==='over'){

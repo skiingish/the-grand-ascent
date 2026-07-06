@@ -180,9 +180,21 @@ function playRound2(name, skill, maxMinutes=30){
   const stats = { name, deniedOpens:0, overshoots:0, stops:0, alignTime:0, alignSamples:0,
     strikeLog:[], approachStart:0, approaching:false, waitStorms:0, rideStorms:0 };
   let lastStrikes = 0, tSim = 0;
-  const ACC = 3.4, TOL = 0.07;
+  const TOL = 0.07;
+  // upgrade preference: throughput first (a decent human's instinct)
+  const PREF = ['speed','gate','cap','magnet','music','clerk','tipjar'];
 
-  while (g.state === 'play' && tSim < maxMinutes*60){
+  while ((g.state === 'play' || g.state === 'pick') && tSim < maxMinutes*60){
+    if (g.state === 'pick'){
+      const ranked = g.offers.map(id => PREF.indexOf(id));
+      let i = (ranked.length > 1 && ranked[1] < ranked[0]) ? 1 : 0;
+      if (!g.offers[i]) i = 0;
+      (stats.upgrades = stats.upgrades || []).push(g.offers[i]);
+      fire('keydown','Digit'+(i+1)); fire('keyup','Digit'+(i+1));
+      pl.target = null;
+      continue;
+    }
+    const ACC = 3.4*(1+0.10*((g.up && g.up.speed) || 0));
     tSim += DT;
     T.update(DT);
 

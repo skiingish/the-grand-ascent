@@ -76,6 +76,25 @@ AND spawns keep accelerating. The reward moment is the most dangerous moment.
 - The full-car snub and hall/car patience asymmetry create the right dread.
 - The tower-growth reward loop reads clearly; deliveries → floors is motivating.
 
+## RESULTS AFTER TUNING (same 4 bot rounds, post-fix)
+
+All five fixes implemented (plus the upgrade-draft system replacing auto capacity):
+
+| Round | Before | After | Floors before → after |
+|---|---|---|---|
+| 1 sloppy | 5.1 min | 12.5 min | FL 8 → FL 14 |
+| 2 learning | 5.6 min | 12.4 min | FL 8 → FL 14 |
+| 3 competent | 4.8 min | **22.8 min** | FL 9 → **FL 30** |
+| 4 skilled | 5.8 min | **29.1 min** | FL 11 → **FL 41** |
+
+Skill now buys 2.3× survival and 3× tower height — the wall is gone and the
+curve is steepest exactly where mastery kicks in. Car-storm deaths dropped to
+zero (trip-scaled patience + boarding relief worked); all deaths are now hall
+storms in deep late game, i.e. genuine throughput saturation — the correct
+way to die. Watch for: whether ~12 min is too long before a casual player's
+first death, and whether late-game (30+ floors) needs a soft difficulty
+escalation so runs still end.
+
 ## Recommended tuning order
 
 1. Boarding relief + trip-scaled rider patience (kills the unfair deaths)
