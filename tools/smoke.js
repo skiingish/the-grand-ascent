@@ -103,13 +103,13 @@ check('high score saved', JSON.parse(localStorage.getItem('grandAscentHS')).floo
 // floor growth + upgrade draft
 fire('keydown','Enter'); fire('keyup','Enter');
 check('restart works', T.G.state === 'play' && T.G.strikes === 0);
-check('starts at 3 floors, cap 3', T.G.floors === 3 && T.G.cap === 3);
+check('starts at 5 floors, cap 3', T.G.floors === 5 && T.G.cap === 3);
 T.G.delivered = 7; T.G.nextFloorAt = 8; T.G.tips = 0;
 T.G.pax = [{id:103, from:0, dest:1, state:'riding', grump:0, angry:false, struck:false, x:0, walk:0, coat:'#000', hat:true, lady:false, skin:'#000'}];
 T.G.pos = 1.0; T.G.vel = 0;
 fire('keydown','Space'); fire('keyup','Space');
 run(3);
-check('8th delivery opens floor 4 + offers upgrade draft', T.G.floors === 4 && T.G.delivered === 8 && T.G.state === 'pick' && T.G.offers.length === 2);
+check('8th delivery opens floor 6 + offers upgrade draft', T.G.floors === 6 && T.G.delivered === 8 && T.G.state === 'pick' && T.G.offers.length === 2);
 fire('keydown','Digit1'); fire('keyup','Digit1');
 check('upgrade installs, play resumes with grace period', T.G.state === 'play' && Object.keys(T.G.up).length === 1 && T.G.graceT > 0);
 

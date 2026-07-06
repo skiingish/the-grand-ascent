@@ -22,7 +22,7 @@ Single HTML file, plain JS + Canvas, no build step. Open the file, play the game
   stops and snubs them. Maxed = storm off + 1 strike. **3 strikes = run over.**
 
 ## Progression (endless)
-- Start: 3 floors, capacity 3.
+- Start: 5 floors, capacity 3.
 - Every 8 deliveries a new floor opens and the game pauses for an **upgrade draft**:
   two options drawn from the pool, pick one (←/→ + Enter, or 1/2).
   Pool: Wider Car (+1 capacity), New Winch (+speed), Oiled Gate (faster doors/boarding),
