@@ -18,6 +18,20 @@ using only existing mechanics (patience/tip multipliers, destination patterns).
 - Boarding relief, trip-scaled rider patience, floor-based difficulty,
   ribbon-cutting grace, Silk Stop, commendations
 
+## UPGRADE POOL CANDIDATES (unscheduled)
+Easy (existing mechanics only):
+- **Champagne Service** — Silk Stop tip bonus doubled (25%→50%)
+- **Freight Counterweight** — car moves faster the fuller it is
+- **Revolving Door** — lobby guests fret at half rate (lobby-only Desk Clerk)
+- **Velvet Rope** — snubbed guests (full-car door slam) take no grump spike
+- **Concierge's Ledger** — commendation needs 15 flawless instead of 20
+
+Needs new mechanics:
+- **Express Bell** (active, one charge per floor opening) — ring to instantly calm
+  everyone in the car; adds an activated-ability key
+- **Second Car** — a second shaft/lift; huge feature, essentially a new game mode
+- **Bellboy** — auto-boards one guest at each stop even before doors fully open
+
 ## IDEAS BACKLOG (unscheduled)
 - Rush-hour waves (morning down-rush to lobby, evening up-rush)
 - Daily-seed challenge run (same spawn sequence for everyone, shareable score)
