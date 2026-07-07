@@ -1280,60 +1280,73 @@ function drawDevMenu(){
   ctx.fillText('FLOORS '+G.floors+'  ·  BASEMENTS '+G.base+'  ·  CAP '+G.cap+'  ·  N/M SPAWN GUESTS IN PLAY',VW/2,118+keys2.length*24+6);
 }
 
-/* ---------- the manager: hand-set pixel portrait, 38x46 grid ---------- */
+/* ---------- the manager: hand-set pixel portrait, 40x54 grid ----------
+   16-bit portrait rules: 4-tone skin ramp lit from the left, warm brown
+   (never black) lines inside the face, one highlight pixel per eye,
+   dither on the coat only — skin stays smooth. */
 const MGR_PAL={
-  k:'#14100c', h:'#1d1814', i:'#3a3430', s:'#e8b98a', S:'#c68f5f', d:'#a3714a',
-  e:'#f4e8cf', p:'#1d1814', b:'#2a2018', m:'#2a2018', w:'#f4e8cf', W:'#d8cbb0',
-  c:'#33383f', C:'#262a30', l:'#4a515c', v:'#5c2430', V:'#4a1c26', t:'#8c1f2e',
-  g:'#c9a227', G:'#7495b3', f:'#d5533c',
+  k:'#14100c', h:'#1d1814', i:'#3a3430', j:'#55504a',
+  x:'#f4cf9e', s:'#e8b98a', S:'#c68f5f', d:'#a3714a', o:'#6b4526',
+  e:'#f4e8cf', p:'#241b14', q:'#ffffff', b:'#2a2018',
+  m:'#241b14', u:'#4a3428',
+  w:'#f4e8cf', W:'#d8cbb0',
+  c:'#33383f', C:'#262a30', l:'#4a515c', v:'#5c2430', V:'#4a1c26',
+  t:'#8c1f2e', T:'#6d1723', g:'#c9a227', A:'#f0d68a', G:'#7495b3', F:'#a3c4d4', f:'#d5533c',
+  R:'#8c1f2e',
 };
 const MGR=[
-'..............kkkkkkkkkk..............',
-'...........kkkhhhhhhhhhhkkk...........',
-'..........khhhhhhhhhhhhhhhhk..........',
-'.........khhihhhhhhhhhhhhhhhk.........',
-'.........khiihhhhhhhhhhhhhhhk.........',
-'........khhiihhhhhhhhhhhhhhhhk........',
-'........khhihhhhhhhhhhhhhhhhhk........',
-'........khhhhhhhhhhhhhhhhhhhhk........',
-'........khssssssssssssssssSShk........',
-'........kssssssssssssssssssSSk........',
-'........kssssssssssssssssssSSk........',
-'........ksbbbbbsssssssbbbbbsSk........',
-'........ksbbbbbsssssssbbbbbsSk........',
-'........kssssssssssssssgggssSk........',
-'........kskeeppkssssssgGGGGgsk........',
-'........kskeeppkssssssgGGGGgsk........',
-'........ksssssssssssssgGGGGgsk........',
-'........kssssssSSssssssgggsgsk........',
-'........kssssssSSssssssssssgsk........',
-'........ksssssSSSSssssssssgssk........',
-'........ksssssSddSssssssssgssk........',
-'........kssssssssssssssssgsssk........',
-'........ksmmmmmmmmsmmmmmmmmssk........',
-'.......ksmmmmmmmmmsmmmmmmmmmsSk.......',
-'.......ksmmksssssssssssskmmmsSk.......',
-'........kssskddddddddddksssssk........',
-'........kSssssssssssssssssssSk........',
-'........kSSssssssssssssssssSSk........',
-'.........kSSssssssssssssssSSk.........',
-'..........kkSSSSssssssSSSSkk..........',
-'......kkkkkwwkkSSSSSSkkwwkkkkk........',
-'....kkcccckwwwkkkkkkkkwwwkccckk.......',
-'...kccccccCwwwwkttttkwwwwCccccck......',
-'..kccccccclkwwkttttttkwwklccccccck....',
-'..kccccccclkkvvkttttkvvkklccccccck....',
-'.kcccccccclkvvvvkttkvvvvklcccccccck...',
-'.kccccfccclvvvvvkttkvvvvvlcccccccck...',
-'.kcccfffcclvvvvvktgkvvvvvlcccccccck...',
-'.kccccfccclvvvvvkttkvvvvvlcccccccck...',
-'kccccccccclvvvggkttkggvvvlccccccccck..',
-'kccccccccclvvgvvkttkvvgvvlccccccccck..',
-'kcccccccccVvgvvvkttkvvvgvVccccccccck..',
-'kcccccccccVvvvvvkttkvvvvgVccccccccck..',
-'kcccccccccVvvvvkttttkvvvvVccccccccck..',
-'kccccccccCVvvvvkttttkvvvvVCcccccccck..',
-'kccccccccCVvvvkttttttkvvvVCcccccccck..',
+'..............kkkkkkkkkkkkk.............',
+'.............khhhhhhhhhhhhhk............',
+'............khihhhhhhhhhhhhhk...........',
+'............khiihhhhhhhhhhhhk...........',
+'............khiihhhhhhhhhhhhk...........',
+'............khiihhhhhhhhhhhhk...........',
+'............khihhhhhhhhhhhhhk...........',
+'............khhhhhhhhhhhhhhhk...........',
+'............kRRRRRRRRRRRRRRRk...........',
+'............kRRRRRRgARRRRRRRk...........',
+'........kkkkkhhhhhhhhhhhhhhhkkkkk.......',
+'.......khhhhhhhhhhhhhhhhhhhhhhhhhk......',
+'........kkkkihhhhhhhhhhhhhhhikkkk.......',
+'...........kxxxxxxxxxxxsssSSk...........',
+'..........kxxxxxxxxxxxssssSSSk..........',
+'..........ksxxxxxxxxxsssssSSSk..........',
+'.........kssxxxbbbssssbbbssSSSk.........',
+'........kSossbbbbbossbbbbboSSSk.........',
+'........kSosssssssossssssssoSSk.........',
+'........kSoskeqpekosskgggggsSSk.........',
+'........kSsskeppekossgGFGGgsSSk.........',
+'........kSssossoossssgGGGGgsSSk.........',
+'........kSssssssoxSossgggogsSSk.........',
+'........kSssssssxxSossssogsSSSk.........',
+'........kSsssssxxsSdosssogsSSSk.........',
+'........kSssssoddSddossogssSSk..........',
+'........kSssssssssssssssgsssSk..........',
+'........kSsuummmmmosmmmmmuusSk..........',
+'.......kSsummmmmmmosmmmmmmmusSk.........',
+'.......kSsmmoxxsssssssssxxommsSk........',
+'........kssssoddddddddddosssssk.........',
+'........kSssssssxxxxxxsssssSSk..........',
+'........kSSsssssxxxxxxssssSSSk..........',
+'.........kSSossssssssssssoSSk...........',
+'..........kSSSossssssssoSSSk............',
+'...........kkSSSSSSSSSSSSkk.............',
+'.......kkkkkwwkkSSSSSSkkwwkkkkk.........',
+'.....kkcccckwwwkkkkkkkkwwwkccckk........',
+'....kccccccCwwwwkttttkwwwwCccccck.......',
+'...kccccccclkwwkttttttkwwklccccccck.....',
+'...kccccccclkkvvkttttkvvkklccccccck.....',
+'..kcccccccclkvvvvkTTkvvvvklcccccccck....',
+'..kccccfccclvvvvvkTTkvvvvvlcccccccck....',
+'..kcccfffcclvvvvvkTgkvvvvvlcccccccck....',
+'..kccccfccclvvvvvkTTkvvvvvlcccccccck....',
+'.kccccccccclvvvggkTTkggvvglccccccccck...',
+'.kcccCccccclvvgvvkTTkvvgvglccccccccck...',
+'.kccccccccCVvgvvvkTTkvvvggVccCcccccck...',
+'.kccCcccccCVvvvvvkTTkvvvvAVcccccCcccck..',
+'.kccccccccCVvvvvkTTTTkvvvvVCcccccccck...',
+'.kcccCccccCVvvvvkTTTTkvvvvVCccCccccck...',
+'.kccccccccCVvvvkTTTTTTkvvvVCcccccccck...',
 ];
 function drawManager(x,y,s){
   for(let r=0;r<MGR.length;r++){
@@ -1350,14 +1363,14 @@ function drawIntro(){
   ctx.strokeStyle=P.brass; ctx.lineWidth=2; ctx.strokeRect(36,26,VW-72,VH-52);
   ctx.strokeStyle=P.brassLo; ctx.lineWidth=1; ctx.strokeRect(42,32,VW-84,VH-64);
   // portrait in a gilded frame
-  const fx=76,fy=88,fw=146,fh=172;
+  const fx=76,fy=80,fw=146,fh=186;
   px(fx-6,fy-6,fw+12,fh+12,P.brassLo); px(fx-4,fy-4,fw+8,fh+8,P.brass);
   px(fx-1,fy-1,fw+2,fh+2,P.brassDk); px(fx,fy,fw,fh,'#181310');
   const gg=ctx.createLinearGradient(0,fy,0,fy+fh);
   gg.addColorStop(0,'#241d16'); gg.addColorStop(1,'#12100c');
   ctx.fillStyle=gg; ctx.fillRect(fx,fy,fw,fh);
-  glow(fx+fw/2,fy+40,60,'rgba(201,162,39,.06)');
-  drawManager(fx+(fw-38*3)/2,fy+14,3);
+  glow(fx+fw/2,fy+50,60,'rgba(201,162,39,.06)');
+  drawManager(fx+(fw-40*3)/2,fy+12,3);
   // nameplate
   px(fx+fw/2-44,fy+fh+8,88,16,P.brass); px(fx+fw/2-42,fy+fh+10,84,12,'#221c14');
   ctx.fillStyle=P.brassHi; ctx.font='9px monospace'; ctx.textAlign='center';
