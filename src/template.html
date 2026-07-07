@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>The Grand Ascent — Lift Operator</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Limelight&family=Jost:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#151210; --panel:#1e1a16; --brass:#c9a227; --brass-hi:#f0d68a;
+    --jade:#2e6f5e; --cream:#f4e8cf; --rust:#a63d2f;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    background:var(--ink);
+    background-image:
+      repeating-linear-gradient(45deg, transparent 0 34px, rgba(201,162,39,.05) 34px 36px),
+      repeating-linear-gradient(-45deg, transparent 0 34px, rgba(201,162,39,.05) 34px 36px);
+    color:var(--cream);
+    font-family:'Jost',sans-serif;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:6px;overflow:hidden;user-select:none;
+  }
+  header{display:flex;align-items:baseline;gap:22px}
+  h1{
+    font-family:'Limelight',cursive;font-weight:400;color:var(--brass);
+    font-size:clamp(15px,2.4vh,24px);letter-spacing:.14em;line-height:1;
+    text-shadow:0 0 18px rgba(201,162,39,.35), 0 2px 0 #000;
+  }
+  header small{font-size:11px;letter-spacing:.4em;color:var(--cream);opacity:.6;text-transform:uppercase}
+  .marquee{
+    padding:7px;border:2px solid var(--brass);outline:2px solid #4a3a12;outline-offset:3px;
+    background:linear-gradient(180deg,#26211b,#191512);
+    box-shadow:0 0 0 7px var(--panel), 0 24px 60px rgba(0,0,0,.7);
+    position:relative;
+  }
+  .marquee::before,.marquee::after{
+    content:"";position:absolute;top:-2px;bottom:-2px;width:9px;
+    background:repeating-linear-gradient(180deg,var(--brass) 0 6px,transparent 6px 14px);
+    opacity:.9;
+  }
+  .marquee::before{left:-13px}.marquee::after{right:-13px}
+  canvas{display:block;image-rendering:pixelated;background:#0d0b09}
+  .legend{display:flex;gap:24px;font-size:11px;letter-spacing:.12em;text-transform:uppercase;opacity:.85}
+  .legend b{
+    border:1px solid var(--brass);border-radius:4px;padding:0 7px;
+    color:var(--brass-hi);background:#000;margin-right:5px;font-weight:600;
+  }
+</style>
+</head>
+<body>
+  <header><h1>THE GRAND ASCENT</h1><small>lift operator · est. 1926</small></header>
+  <div class="marquee"><canvas id="cv"></canvas></div>
+  <div class="legend">
+    <span><b>&uarr;&darr;</b>lever</span>
+    <span><b>space</b>gate</span>
+    <span><b>esc</b>pause</span>
+    <span><b>enter</b>start over</span>
+  </div>
+<script>
+/*INJECT:JS*/
+</script>
+</body>
+</html>

@@ -20,7 +20,8 @@ Open `index.html` in a browser, or serve it: `node tools/serve.js` (prints local
 
 | File | What |
 |---|---|
-| `index.html` | The entire game |
+| `src/` | Game source: `template.html` + `js/*.js` modules (edit these) |
+| `index.html` | GENERATED single-file build — `node tools/build.js` (see ARCHITECTURE.md) |
 | `DESIGN.md` | Locked game design |
 | `TUNING.md` | Every balance lever, targets, and the test loop |
 | `CHARACTERS.md` | The 16-character cast design |

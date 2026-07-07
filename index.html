@@ -60,6 +60,10 @@
     <span><b>enter</b>start over</span>
   </div>
 <script>
+/* ============================================================
+   GENERATED FILE — do not edit directly.
+   Source lives in src/js/*.js; rebuild with: node tools/build.js
+   ============================================================ */
 "use strict";
 /* ================= THE GRAND ASCENT =================
    Single-file 16-bit-fidelity prototype. All art programmatic. */
@@ -185,6 +189,7 @@ function pickUpgrade(i){
   if(G.justDug){ G.justDug=false; say('WORD IS '+BASEMENTS[G.base-1].name+' JUST OPENED BELOW THE STREET...',3.5); }
   else say('FLOOR '+floorName(G.floors-1)+' OPEN  ·  '+UPGRADES[id].name+' INSTALLED',3);
 }
+
 /* ---------- DEV level (hidden: type D-E-V at the title) ---------- */
 function startDev(){
   const scheme=G.scheme; reset();
