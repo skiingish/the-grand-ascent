@@ -1119,14 +1119,12 @@ function plaque(x,y,w,h){
 }
 function drawHUD(){
   ctx.font='11px monospace';
-  plaque(8,8,132,68);
+  plaque(8,8,132,52);
   ctx.fillStyle=P.brassHi; ctx.textAlign='left';
   ctx.fillText('TIPS  $'+G.tips.toFixed(2),16,24);
   ctx.fillStyle=P.cream;
   ctx.fillText('CAR   '+riders().length+'/'+G.cap,16,39);
   ctx.fillText('BEST  FL '+floorName(G.maxFloor),16,54);
-  ctx.fillStyle=G.flawless>=15?P.brassHi:P.cream;
-  ctx.fillText('MERIT '+G.flawless+'/20',16,69);
   // strikes (lamp count grows with Manager's Favor)
   const ns=maxStrikes(), sw=ns*24+16, sx=VW-8-sw;
   plaque(sx,8,sw,34);
