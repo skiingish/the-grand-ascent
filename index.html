@@ -1273,18 +1273,16 @@ function drawDevMenu(){
   ctx.fillText('FLOORS '+G.floors+'  ·  BASEMENTS '+G.base+'  ·  CAP '+G.cap+'  ·  N/M SPAWN GUESTS IN PLAY',VW/2,118+keys2.length*24+6);
 }
 
-function drawMenuButton(b,hover,title,lines,keyHint){
+function drawMenuButton(b,hover,title,lines){
   px(b.x,b.y,b.w,b.h,hover?'rgba(46,38,24,.96)':'rgba(20,17,14,.94)');
   ctx.strokeStyle=hover?P.brassHi:P.brassLo; ctx.lineWidth=hover?2:1;
   ctx.strokeRect(b.x+.5,b.y+.5,b.w-1,b.h-1);
   if(hover){ ctx.strokeStyle=P.brass; ctx.strokeRect(b.x+4.5,b.y+4.5,b.w-9,b.h-9); }
   ctx.fillStyle=hover?P.brassHi:P.brass; ctx.font='16px Limelight, monospace'; ctx.textAlign='center';
-  ctx.fillText(title,b.x+b.w/2,b.y+28);
-  px(b.x+b.w/2-34,b.y+36,68,1,P.brassLo);
+  ctx.fillText(title,b.x+b.w/2,b.y+30);
+  px(b.x+b.w/2-34,b.y+38,68,1,P.brassLo);
   ctx.font='10px monospace'; ctx.fillStyle=P.cream;
-  lines.forEach((l,i)=>ctx.fillText(l,b.x+b.w/2,b.y+52+i*13));
-  ctx.fillStyle=hover?P.brassHi:'rgba(244,232,207,.45)'; ctx.font='9px monospace';
-  ctx.fillText(keyHint,b.x+b.w/2,b.y+b.h-9);
+  lines.forEach((l,i)=>ctx.fillText(l,b.x+b.w/2,b.y+56+i*13));
 }
 function drawTitle(){
   ctx.fillStyle='rgba(13,11,9,.9)'; ctx.fillRect(0,0,VW,VH);
@@ -1303,17 +1301,15 @@ function drawTitle(){
   ctx.fillText('Deliver guests before they boil over — three walk-outs and',VW/2,124);
   ctx.fillText('the management lets you go. Happy guests tip in good honest coin.',VW/2,140);
   drawMenuButton(BTN.manual,inBtn(BTN.manual),'MANUAL',
-    ['Arrow keys or scroll wheel','drive the lever.','SPACE works the gate.'],'OR PRESS 1');
+    ['Arrow keys or scroll wheel','drive the lever.','SPACE works the gate.']);
   drawMenuButton(BTN.auto,inBtn(BTN.auto),'AUTO',
-    ['Click a floor —','the car does the driving.','Pure routing.'],'OR PRESS 2');
+    ['Click a floor —','the car does the driving.','Pure routing.']);
   // scroll-direction toggle
   const b=BTN.invert,h=inBtn(b);
   px(b.x,b.y,b.w,b.h,h?'rgba(46,38,24,.96)':'rgba(20,17,14,.9)');
   ctx.strokeStyle=h?P.brassHi:P.brassLo; ctx.lineWidth=1; ctx.strokeRect(b.x+.5,b.y+.5,b.w-1,b.h-1);
   ctx.fillStyle=h?P.brassHi:P.cream; ctx.font='10px monospace'; ctx.textAlign='center';
   ctx.fillText('SCROLL DIRECTION:  '+(wheelInv?'SCROLL DOWN = UP (INVERTED)':'SCROLL UP = UP')+'   ⟲',b.x+b.w/2,b.y+17);
-  ctx.fillStyle='rgba(244,232,207,.5)'; ctx.font='9px monospace';
-  ctx.fillText('CLICK TO FLIP · OR PRESS I',VW/2,BTN.invert.y+40);
   ctx.fillStyle=P.cream; ctx.font='11px monospace';
   ctx.fillText('BEST: $'+G.hs.tips.toFixed(2)+'  ·  FLOOR '+floorName(G.hs.floor),VW/2,VH-46);
   if(Math.floor(G.t*2)%2===0){
