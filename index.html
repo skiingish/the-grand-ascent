@@ -408,23 +408,44 @@ cv.addEventListener('wheel',e=>{
 },{passive:false});
 
 /* mouse: menus are clickable everywhere; in auto mode, floors too */
-const TITLE_SCHEME_ROWS=[[5,'manual'],[6,'auto']];   // line indices in the title overlay
-const TITLE_INVERT_ROW=8;
+const BTN={
+  manual:{x:VW/2-236,y:168,w:224,h:96},
+  auto:  {x:VW/2+12, y:168,w:224,h:96},
+  invert:{x:VW/2-170,y:288,w:340,h:26},
+};
+const mouse={x:-1,y:-1};
+function inBtn(b){ return mouse.x>b.x&&mouse.x<b.x+b.w&&mouse.y>b.y&&mouse.y<b.y+b.h; }
+function pickCardAt(mx,my){
+  const cw=210,ch=124,cy0=140;
+  for(let i=0;i<(G.offers||[]).length;i++){
+    const x=VW/2+(i===0?-cw-14:14);
+    if(mx>x&&mx<x+cw&&my>cy0&&my<cy0+ch) return i;
+  }
+  return -1;
+}
+cv.addEventListener('mousemove',e=>{
+  const r=cv.getBoundingClientRect();
+  mouse.x=(e.clientX-r.left)/r.width*VW; mouse.y=(e.clientY-r.top)/r.height*VH;
+  let ptr=false;
+  if(G.state==='title') ptr=inBtn(BTN.manual)||inBtn(BTN.auto)||inBtn(BTN.invert);
+  else if(G.state==='pick') ptr=pickCardAt(mouse.x,mouse.y)>=0;
+  else if(G.state==='over'||G.state==='pause') ptr=true;
+  else if(G.state==='play'&&G.scheme==='auto') ptr=true;
+  cv.style.cursor=ptr?'pointer':'default';
+});
+function startShift(scheme){
+  G.scheme=scheme; G.state='play';
+  say('GOOD MORNING, OPERATOR  ·  '+(scheme==='auto'?'AUTO':'MANUAL')+' CONTROLS',2.5);
+}
 cv.addEventListener('mousedown',e=>{
   ac();
   const r=cv.getBoundingClientRect();
   const mx=(e.clientX-r.left)/r.width*VW, my=(e.clientY-r.top)/r.height*VH;
+  mouse.x=mx; mouse.y=my;
   if(G.state==='title'){
-    for(const [row,scheme] of TITLE_SCHEME_ROWS){
-      const ry=136+row*20;
-      if(my>ry-13&&my<ry+5&&mx>VW/2-190&&mx<VW/2+190){
-        G.scheme=scheme; G.state='play';
-        say('GOOD MORNING, OPERATOR  ·  '+(scheme==='auto'?'AUTO':'MANUAL')+' CONTROLS',2.5);
-        return;
-      }
-    }
-    const iy=136+TITLE_INVERT_ROW*20;
-    if(my>iy-13&&my<iy+5&&mx>VW/2-190&&mx<VW/2+190){
+    if(inBtn(BTN.manual)) startShift('manual');
+    else if(inBtn(BTN.auto)) startShift('auto');
+    else if(inBtn(BTN.invert)){
       wheelInv=!wheelInv; localStorage.setItem('grandAscentWheelInv',wheelInv?'1':'0'); S.ding(0);
     }
     return;
@@ -432,11 +453,8 @@ cv.addEventListener('mousedown',e=>{
   if(G.state==='over'){ reset(); G.state='play'; return; }
   if(G.state==='pause'){ G.state='play'; return; }
   if(G.state==='pick'){
-    const cw=210,ch=124,cy0=140;
-    for(let i=0;i<(G.offers||[]).length;i++){
-      const x=VW/2+(i===0?-cw-14:14);
-      if(mx>x&&mx<x+cw&&my>cy0&&my<cy0+ch){ pickUpgrade(i); return; }
-    }
+    const i=pickCardAt(mx,my);
+    if(i>=0) pickUpgrade(i);
     return;
   }
   if(G.state==='devmenu'){
@@ -1255,6 +1273,54 @@ function drawDevMenu(){
   ctx.fillText('FLOORS '+G.floors+'  ·  BASEMENTS '+G.base+'  ·  CAP '+G.cap+'  ·  N/M SPAWN GUESTS IN PLAY',VW/2,118+keys2.length*24+6);
 }
 
+function drawMenuButton(b,hover,title,lines,keyHint){
+  px(b.x,b.y,b.w,b.h,hover?'rgba(46,38,24,.96)':'rgba(20,17,14,.94)');
+  ctx.strokeStyle=hover?P.brassHi:P.brassLo; ctx.lineWidth=hover?2:1;
+  ctx.strokeRect(b.x+.5,b.y+.5,b.w-1,b.h-1);
+  if(hover){ ctx.strokeStyle=P.brass; ctx.strokeRect(b.x+4.5,b.y+4.5,b.w-9,b.h-9); }
+  ctx.fillStyle=hover?P.brassHi:P.brass; ctx.font='16px Limelight, monospace'; ctx.textAlign='center';
+  ctx.fillText(title,b.x+b.w/2,b.y+28);
+  px(b.x+b.w/2-34,b.y+36,68,1,P.brassLo);
+  ctx.font='10px monospace'; ctx.fillStyle=P.cream;
+  lines.forEach((l,i)=>ctx.fillText(l,b.x+b.w/2,b.y+52+i*13));
+  ctx.fillStyle=hover?P.brassHi:'rgba(244,232,207,.45)'; ctx.font='9px monospace';
+  ctx.fillText(keyHint,b.x+b.w/2,b.y+b.h-9);
+}
+function drawTitle(){
+  ctx.fillStyle='rgba(13,11,9,.9)'; ctx.fillRect(0,0,VW,VH);
+  ctx.strokeStyle=P.brass; ctx.lineWidth=2; ctx.strokeRect(36,26,VW-72,VH-52);
+  ctx.strokeStyle=P.brassLo; ctx.lineWidth=1; ctx.strokeRect(42,32,VW-84,VH-64);
+  for(const [cx2,cy3,dx,dy] of [[36,26,1,1],[VW-36,26,-1,1],[36,VH-26,1,-1],[VW-36,VH-26,-1,-1]]){
+    ctx.fillStyle=P.brass;
+    ctx.beginPath(); ctx.moveTo(cx2,cy3); ctx.lineTo(cx2+dx*22,cy3); ctx.lineTo(cx2,cy3+dy*22); ctx.fill();
+    ctx.fillStyle='#0d0b09';
+    ctx.beginPath(); ctx.moveTo(cx2,cy3); ctx.lineTo(cx2+dx*12,cy3); ctx.lineTo(cx2,cy3+dy*12); ctx.fill();
+  }
+  ctx.fillStyle=P.brassHi; ctx.font='30px Limelight, monospace'; ctx.textAlign='center';
+  ctx.fillText('THE GRAND ASCENT',VW/2,86);
+  px(VW/2-110,98,220,1,P.brassLo); px(VW/2-60,101,120,1,P.brassLo);
+  ctx.font='11px monospace'; ctx.fillStyle=P.cream;
+  ctx.fillText('Deliver guests before they boil over — three walk-outs and',VW/2,124);
+  ctx.fillText('the management lets you go. Happy guests tip in good honest coin.',VW/2,140);
+  drawMenuButton(BTN.manual,inBtn(BTN.manual),'MANUAL',
+    ['Arrow keys or scroll wheel','drive the lever.','SPACE works the gate.'],'OR PRESS 1');
+  drawMenuButton(BTN.auto,inBtn(BTN.auto),'AUTO',
+    ['Click a floor —','the car does the driving.','Pure routing.'],'OR PRESS 2');
+  // scroll-direction toggle
+  const b=BTN.invert,h=inBtn(b);
+  px(b.x,b.y,b.w,b.h,h?'rgba(46,38,24,.96)':'rgba(20,17,14,.9)');
+  ctx.strokeStyle=h?P.brassHi:P.brassLo; ctx.lineWidth=1; ctx.strokeRect(b.x+.5,b.y+.5,b.w-1,b.h-1);
+  ctx.fillStyle=h?P.brassHi:P.cream; ctx.font='10px monospace'; ctx.textAlign='center';
+  ctx.fillText('SCROLL DIRECTION:  '+(wheelInv?'SCROLL DOWN = UP (INVERTED)':'SCROLL UP = UP')+'   ⟲',b.x+b.w/2,b.y+17);
+  ctx.fillStyle='rgba(244,232,207,.5)'; ctx.font='9px monospace';
+  ctx.fillText('CLICK TO FLIP · OR PRESS I',VW/2,BTN.invert.y+40);
+  ctx.fillStyle=P.cream; ctx.font='11px monospace';
+  ctx.fillText('BEST: $'+G.hs.tips.toFixed(2)+'  ·  FLOOR '+floorName(G.hs.floor),VW/2,VH-46);
+  if(Math.floor(G.t*2)%2===0){
+    ctx.fillStyle=P.brass; ctx.fillText('— CLICK A MODE TO CLOCK IN —',VW/2,VH-64);
+  }
+}
+
 function draw(){
   ctx.save();
   if(G.shake>0) ctx.translate(rnd(4)-2,rnd(4)-2);
@@ -1274,21 +1340,8 @@ function draw(){
       'Guests are frozen in time — even the grumpy ones.',
     ]);
   }
-  else if(G.state==='title'){
-    drawOverlay('THE GRAND ASCENT',[
-      'Deliver guests before they boil over — 3 walk-outs and',
-      'the management lets you go. Happy guests tip; deliveries',
-      'open new floors, each adding one improvement you choose.',
-      '',
-      'CHOOSE YOUR CONTROLS TO CLOCK IN:',
-      '1 — MANUAL    arrows or scroll wheel drive, space works the gate',
-      '2 — AUTO      click a floor, the car drives itself',
-      '',
-      'I — SCROLL DIRECTION: '+(wheelInv?'SCROLL DOWN = UP  (INVERTED)':'SCROLL UP = UP'),
-      '',
-      'BEST: $'+G.hs.tips.toFixed(2)+'  ·  FLOOR '+floorName(G.hs.floor),
-    ]);
-  } else if(G.state==='over'){
+  else if(G.state==='title'){ drawTitle(); }
+  else if(G.state==='over'){
     drawOverlay('SHIFT TERMINATED',[
       'The revolving door hits you on the way out.',
       '',
