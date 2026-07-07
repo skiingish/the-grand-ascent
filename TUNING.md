@@ -1,6 +1,8 @@
 # Tuning Levers — where every knob lives and how to pull it
 
-All gameplay constants are in `index.html`. After ANY change, run:
+All gameplay constants live in `src/js/` (physics + patience in `40-input-update.js`,
+spawn + tips in `35-passengers.js`, upgrades in `25-upgrades.js`, cast in
+`35-passengers.js`). After ANY change: `node tools/build.js`, then run:
 
 ```
 node tools/smoke.js       # 28+ logic checks, must be all green
@@ -16,7 +18,7 @@ node tools/playtest.js    # 4 simulated skill levels; run 2-3 samples (RNG varia
 
 ## Pacing levers
 
-| Lever | Location (search for) | Current | Effect |
+| Lever | Location (search in src/js/) | Current | Effect |
 |---|---|---|---|
 | Spawn curve | `base=Math.max(3.05,7.2-0.32*G.floors)` | 7.2s intercept, 3.05s plateau | Lower intercept = hotter early game; lower plateau = harsher late game |
 | Difficulty curve | `diff=Math.min(2.4,1+(G.floors-2)*0.05)` | ×1.15 at start, cap ×2.4 | Multiplies ALL patience decay |

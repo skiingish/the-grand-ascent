@@ -10,7 +10,7 @@ function reset(){
     scheme:(G&&G.scheme)||'manual',             // 'manual' (arrows + wheel) | 'auto' (click floors)
     autoTarget:null, dev:false, devBuf:'',
     up:{}, offers:null, pickSel:0, graceT:0, silk:false, flawless:0,
-    transferDur:0.45,
+    transferDur:XFER_BASE,
     doorT:0, doorOpen:false,    // doorT 0..1 openness
     transfer:null, transferT:0, // passenger mid-doorway
     pax:[], spawnT:3, spawnId:0,

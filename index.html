@@ -80,11 +80,17 @@ function fit(){
 }
 addEventListener('resize',fit); fit();
 
+/* shared UI geometry & constants: single source for drawing AND hit-testing */
+const PICK_CARD={w:210,h:124,y0:140,gap:14};   // upgrade draft cards
+const DEVROW={y0:118,step:24,hw:150};          // dev upgrade-editor rows
+const MINIMAP={x:VW-26,y:64,h:VH-120};         // shaft minimap strip
+const XFER_BASE=0.45;                          // seconds per passenger through the doorway
+
 /* ---------- palette ---------- */
 const P={
-  night:'#0d0b09', slab:'#3a2e24', slabHi:'#55432f', slabLo:'#241a12',
+slab:'#3a2e24', slabHi:'#55432f', slabLo:'#241a12',
   brass:'#c9a227', brassHi:'#f0d68a', brassLo:'#7a5f14', brassDk:'#4a3a12',
-  jade:'#2e6f5e', jadeHi:'#4a9a83', cream:'#f4e8cf', rust:'#a63d2f',
+cream:'#f4e8cf', rust:'#a63d2f',
   shaft:'#100d0c', shaft2:'#1a1512', rail:'#332b25',
   ok:'#7fbf6a', warn:'#e0a83c', bad:'#d5533c',
 };
@@ -142,7 +148,7 @@ function reset(){
     scheme:(G&&G.scheme)||'manual',             // 'manual' (arrows + wheel) | 'auto' (click floors)
     autoTarget:null, dev:false, devBuf:'',
     up:{}, offers:null, pickSel:0, graceT:0, silk:false, flawless:0,
-    transferDur:0.45,
+    transferDur:XFER_BASE,
     doorT:0, doorOpen:false,    // doorT 0..1 openness
     transfer:null, transferT:0, // passenger mid-doorway
     pax:[], spawnT:3, spawnId:0,
@@ -190,6 +196,14 @@ function pickUpgrade(i){
   else say('FLOOR '+floorName(G.floors-1)+' OPEN  ·  '+UPGRADES[id].name+' INSTALLED',3);
 }
 
+/* flush tolerance: how far off a floor the gate still opens (magnet widens it) */
+function flushTol(){ return 0.085*(1+0.25*upLv('magnet')); }
+function xferTime(){
+  let t=(G.silk?0.24:XFER_BASE)*Math.pow(0.88,upLv('gate'));
+  if(Math.round(G.pos)===0) t*=Math.pow(0.78,upLv('bellboy'));   // the bellboy hustles
+  return t;
+}
+
 /* ---------- DEV level (hidden: type D-E-V at the title) ---------- */
 function startDev(){
   const scheme=G.scheme; reset();
@@ -205,16 +219,10 @@ function devCycleUpgrade(id){
 function devMenuRowAt(mx,my){
   const keys2=Object.keys(UPGRADES);
   for(let i=0;i<keys2.length;i++){
-    const ry=118+i*24;
-    if(my>ry-14&&my<ry+6&&mx>VW/2-150&&mx<VW/2+150) return keys2[i];
+    const ry=DEVROW.y0+i*DEVROW.step;
+    if(my>ry-14&&my<ry+6&&mx>VW/2-DEVROW.hw&&mx<VW/2+DEVROW.hw) return keys2[i];
   }
   return null;
-}
-
-function xferTime(){
-  let t=(G.silk?0.24:0.45)*Math.pow(0.88,upLv('gate'));
-  if(Math.round(G.pos)===0) t*=Math.pow(0.78,upLv('bellboy'));   // the bellboy hustles
-  return t;
 }
 
 /* ---------- passengers ---------- */
@@ -421,10 +429,10 @@ const BTN={
 const mouse={x:-1,y:-1};
 function inBtn(b){ return mouse.x>b.x&&mouse.x<b.x+b.w&&mouse.y>b.y&&mouse.y<b.y+b.h; }
 function pickCardAt(mx,my){
-  const cw=210,ch=124,cy0=140;
+  const {w,h,y0,gap}=PICK_CARD;
   for(let i=0;i<(G.offers||[]).length;i++){
-    const x=VW/2+(i===0?-cw-14:14);
-    if(mx>x&&mx<x+cw&&my>cy0&&my<cy0+ch) return i;
+    const x=VW/2+(i===0?-w-gap:gap);
+    if(mx>x&&mx<x+w&&my>y0&&my<y0+h) return i;
   }
   return -1;
 }
@@ -476,11 +484,11 @@ cv.addEventListener('mousedown',e=>{
   }
   if(G.state==='play'&&G.scheme==='auto'){
     let f;
-    if(mx>VW-34){                                        // minimap strip
-      const mh=VH-120,my0=64,mlo=-G.base,mspan=Math.max(1,G.floors-1-mlo);
-      f=Math.round(((my0+mh-my)/mh)*mspan+mlo);
+    if(mx>MINIMAP.x-8){                                  // minimap strip
+      const mlo=-G.base,mspan=Math.max(1,G.floors-1-mlo);
+      f=Math.round(((MINIMAP.y+MINIMAP.h-my)/MINIMAP.h)*mspan+mlo);
     } else {
-      f=Math.floor(((VH-50-my)+G.camY)/FLOOR_H);
+      f=Math.floor(worldYAt(my)/FLOOR_H);
     }
     if(f>=-G.base&&f<G.floors){
       G.autoTarget=f;
@@ -492,8 +500,7 @@ cv.addEventListener('mousedown',e=>{
 function flushFloor(){
   const f=Math.round(G.pos);
   if(f<-G.base||f>=G.floors) return -99;
-  const tol=0.085*(1+0.25*upLv('magnet'));
-  return (Math.abs(G.pos-f)<tol && Math.abs(G.vel)<0.3) ? f : -99;
+  return (Math.abs(G.pos-f)<flushTol() && Math.abs(G.vel)<0.3) ? f : -99;
 }
 function toggleGate(){
   if(G.doorOpen){
@@ -638,6 +645,18 @@ function update(dt){
   }
   G.pax=G.pax.filter(p=>p.state!=='gone');
 
+  /* --- hall movement: queue shuffle + storm-off walks (was in draw(), frame-rate dependent) --- */
+  const qIdx={};
+  for(const p of G.pax){
+    if(p.state==='waiting'){
+      const i2=qIdx[p.from]=(qIdx[p.from]??0); qIdx[p.from]++;
+      const targetX=SHX-58-i2*24;
+      if(p.x===0) p.x=HALLX-14;
+      p.x+=(targetX-p.x)*Math.min(1,dt*3.75);
+      if(Math.abs(targetX-p.x)>1) p.walk+=dt*12.5;
+    } else if(p.state==='storming'){ p.x-=90*dt; }
+  }
+
   /* --- spawning (paused during the ribbon-cutting; manual-only in dev) --- */
   if(G.graceT<=0&&!G.dev) G.spawnT-=dt;
   if(G.spawnT<=0){
@@ -662,6 +681,7 @@ function glow(x,y,r,c0){
   ctx.fillStyle=g; ctx.fillRect(x-r,y-r,r*2,r*2);
 }
 function sy(worldY){ return Math.round(VH-50-(worldY-G.camY)); } // screen y of a world height
+function worldYAt(screenY){ return (VH-50-screenY)+G.camY; }      // inverse: world height under a screen y
 const BX=100, BW=400;            // building x/width
 const SHX=BX+BW-124, SHW=104;    // shaft
 const HALLX=BX+12;
@@ -976,16 +996,13 @@ function drawFloor(f){
   // waiting queue
   const q=waitersAt(f);
   q.forEach((p,i)=>{
-    const targetX=SHX-58-i*24;
-    if(p.x===0)p.x=HALLX-14;
-    p.x+=(targetX-p.x)*0.06; p.walk+=Math.abs(targetX-p.x)>1?0.2:0;
     drawPerson(p.x,yb-6,p,Math.floor(p.walk));
     bubble(p.x+7,yb-42,floorName(p.dest),p.grump);
     px(p.x,yb-4,14,2,'#0007'); px(p.x,yb-5,Math.round(14*Math.min(1,p.grump)),2,moodColor(p.grump));
   });
   // storming out
   G.pax.filter(p=>p.state==='storming'&&p.from===f).forEach(p=>{
-    p.x-=90*0.016; drawPerson(p.x,yb-6,p,Math.floor(G.t*10));
+    drawPerson(p.x,yb-6,p,Math.floor(G.t*10));
   });
 }
 
@@ -1025,7 +1042,7 @@ function drawShaft(){
   });
   // doorway transfer walker
   if(G.transfer){
-    const p=G.transfer, prog=1-G.transferT/(G.transferDur||0.45);
+    const p=G.transfer, prog=1-G.transferT/(G.transferDur||XFER_BASE);
     const fromX=p.state==='boarding'?SHX-20:carX+carW/2, toX=p.state==='boarding'?carX+carW/2:SHX-26;
     drawPerson(fromX+(toX-fromX)*prog,cy-7,p,Math.floor(G.t*10));
   }
@@ -1148,7 +1165,7 @@ function drawDial(){
   ctx.strokeStyle=P.brassLo; ctx.strokeRect(cx+R+17.5,cyd-13.5,13,13);
   ctx.fillStyle=P.cream; ctx.font='8px monospace'; ctx.textAlign='center'; ctx.fillText('FLUSH',cx+R+24,cyd+9);
   // fine alignment gauge
-  const off=G.pos-Math.round(G.pos), tol=0.085*(1+0.25*upLv('magnet'));
+  const off=G.pos-Math.round(G.pos), tol=flushTol();
   px(cx-R-58,cyd-11,34,10,'#141110'); ctx.strokeStyle=P.brassLo; ctx.strokeRect(cx-R-58.5,cyd-11.5,35,11);
   px(cx-R-42,cyd-10,2,8,'#4a3f2a');
   px(cx-R-58+16+Math.round(off*140),cyd-9,4,6,Math.abs(off)<tol?P.ok:P.warn);
@@ -1177,7 +1194,7 @@ function drawHUD(){
   ctx.fillStyle=P.cream; ctx.font='8px monospace'; ctx.textAlign='center'; ctx.fillText('STRIKES',sx+sw/2,38);
   drawDial();
   // minimap
-  const mx=VW-26,mh=VH-120,my=64;
+  const mx=MINIMAP.x,mh=MINIMAP.h,my=MINIMAP.y;
   px(mx-4,my-4,20,mh+8,'rgba(13,11,9,.8)');
   ctx.strokeStyle=P.brassLo; ctx.strokeRect(mx-4.5,my-4.5,21,mh+9);
   px(mx+5,my,2,mh,P.rail);
@@ -1271,9 +1288,9 @@ function drawDevMenu(){
   ctx.fillText('CLICK A ROW TO CYCLE ITS LEVEL  ·  U OR ESC TO CLOSE',VW/2,94);
   const keys2=Object.keys(UPGRADES);
   keys2.forEach((id,i)=>{
-    const u=UPGRADES[id], ry=118+i*24;
-    px(VW/2-150,ry-14,300,20,'rgba(30,25,20,.9)');
-    ctx.strokeStyle=P.brassLo; ctx.strokeRect(VW/2-150.5,ry-14.5,301,21);
+    const u=UPGRADES[id], ry=DEVROW.y0+i*DEVROW.step;
+    px(VW/2-DEVROW.hw,ry-14,DEVROW.hw*2,20,'rgba(30,25,20,.9)');
+    ctx.strokeStyle=P.brassLo; ctx.strokeRect(VW/2-DEVROW.hw-.5,ry-14.5,DEVROW.hw*2+1,21);
     ctx.fillStyle=P.brass; ctx.font='10px monospace'; ctx.textAlign='left';
     ctx.fillText(u.name,VW/2-140,ry);
     for(let k=0;k<u.max;k++){
@@ -1282,7 +1299,7 @@ function drawDevMenu(){
     }
   });
   ctx.fillStyle='rgba(244,232,207,.6)'; ctx.textAlign='center';
-  ctx.fillText('FLOORS '+G.floors+'  ·  BASEMENTS '+G.base+'  ·  CAP '+G.cap+'  ·  N/M SPAWN GUESTS IN PLAY',VW/2,118+keys2.length*24+6);
+  ctx.fillText('FLOORS '+G.floors+'  ·  BASEMENTS '+G.base+'  ·  CAP '+G.cap+'  ·  N/M SPAWN GUESTS IN PLAY',VW/2,DEVROW.y0+keys2.length*DEVROW.step+6);
 }
 
 /* ---------- the manager: hand-set pixel portrait, 40x54 grid ----------

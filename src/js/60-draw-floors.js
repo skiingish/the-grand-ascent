@@ -174,15 +174,12 @@ function drawFloor(f){
   // waiting queue
   const q=waitersAt(f);
   q.forEach((p,i)=>{
-    const targetX=SHX-58-i*24;
-    if(p.x===0)p.x=HALLX-14;
-    p.x+=(targetX-p.x)*0.06; p.walk+=Math.abs(targetX-p.x)>1?0.2:0;
     drawPerson(p.x,yb-6,p,Math.floor(p.walk));
     bubble(p.x+7,yb-42,floorName(p.dest),p.grump);
     px(p.x,yb-4,14,2,'#0007'); px(p.x,yb-5,Math.round(14*Math.min(1,p.grump)),2,moodColor(p.grump));
   });
   // storming out
   G.pax.filter(p=>p.state==='storming'&&p.from===f).forEach(p=>{
-    p.x-=90*0.016; drawPerson(p.x,yb-6,p,Math.floor(G.t*10));
+    drawPerson(p.x,yb-6,p,Math.floor(G.t*10));
   });
 }

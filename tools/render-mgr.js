@@ -2,7 +2,7 @@
 const fs = require('fs');
 const zlib = require('zlib');
 
-const html = fs.readFileSync('C:/Users/seany/Projects/GameDev/lift-operator/index.html', 'utf8');
+const html = fs.readFileSync(require('path').join(__dirname,'..','index.html'),'utf8');
 const palM = html.match(/const MGR_PAL=\{([\s\S]*?)\};/);
 const gridM = html.match(/const MGR=\[([\s\S]*?)\];/);
 const PAL = {};

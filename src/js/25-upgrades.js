@@ -26,3 +26,11 @@ function pickUpgrade(i){
   if(G.justDug){ G.justDug=false; say('WORD IS '+BASEMENTS[G.base-1].name+' JUST OPENED BELOW THE STREET...',3.5); }
   else say('FLOOR '+floorName(G.floors-1)+' OPEN  ·  '+UPGRADES[id].name+' INSTALLED',3);
 }
+
+/* flush tolerance: how far off a floor the gate still opens (magnet widens it) */
+function flushTol(){ return 0.085*(1+0.25*upLv('magnet')); }
+function xferTime(){
+  let t=(G.silk?0.24:XFER_BASE)*Math.pow(0.88,upLv('gate'));
+  if(Math.round(G.pos)===0) t*=Math.pow(0.78,upLv('bellboy'));   // the bellboy hustles
+  return t;
+}

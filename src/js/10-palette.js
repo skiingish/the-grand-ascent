@@ -1,8 +1,8 @@
 /* ---------- palette ---------- */
 const P={
-  night:'#0d0b09', slab:'#3a2e24', slabHi:'#55432f', slabLo:'#241a12',
+slab:'#3a2e24', slabHi:'#55432f', slabLo:'#241a12',
   brass:'#c9a227', brassHi:'#f0d68a', brassLo:'#7a5f14', brassDk:'#4a3a12',
-  jade:'#2e6f5e', jadeHi:'#4a9a83', cream:'#f4e8cf', rust:'#a63d2f',
+cream:'#f4e8cf', rust:'#a63d2f',
   shaft:'#100d0c', shaft2:'#1a1512', rail:'#332b25',
   ok:'#7fbf6a', warn:'#e0a83c', bad:'#d5533c',
 };

@@ -61,10 +61,10 @@ const BTN={
 const mouse={x:-1,y:-1};
 function inBtn(b){ return mouse.x>b.x&&mouse.x<b.x+b.w&&mouse.y>b.y&&mouse.y<b.y+b.h; }
 function pickCardAt(mx,my){
-  const cw=210,ch=124,cy0=140;
+  const {w,h,y0,gap}=PICK_CARD;
   for(let i=0;i<(G.offers||[]).length;i++){
-    const x=VW/2+(i===0?-cw-14:14);
-    if(mx>x&&mx<x+cw&&my>cy0&&my<cy0+ch) return i;
+    const x=VW/2+(i===0?-w-gap:gap);
+    if(mx>x&&mx<x+w&&my>y0&&my<y0+h) return i;
   }
   return -1;
 }
@@ -116,11 +116,11 @@ cv.addEventListener('mousedown',e=>{
   }
   if(G.state==='play'&&G.scheme==='auto'){
     let f;
-    if(mx>VW-34){                                        // minimap strip
-      const mh=VH-120,my0=64,mlo=-G.base,mspan=Math.max(1,G.floors-1-mlo);
-      f=Math.round(((my0+mh-my)/mh)*mspan+mlo);
+    if(mx>MINIMAP.x-8){                                  // minimap strip
+      const mlo=-G.base,mspan=Math.max(1,G.floors-1-mlo);
+      f=Math.round(((MINIMAP.y+MINIMAP.h-my)/MINIMAP.h)*mspan+mlo);
     } else {
-      f=Math.floor(((VH-50-my)+G.camY)/FLOOR_H);
+      f=Math.floor(worldYAt(my)/FLOOR_H);
     }
     if(f>=-G.base&&f<G.floors){
       G.autoTarget=f;
@@ -132,8 +132,7 @@ cv.addEventListener('mousedown',e=>{
 function flushFloor(){
   const f=Math.round(G.pos);
   if(f<-G.base||f>=G.floors) return -99;
-  const tol=0.085*(1+0.25*upLv('magnet'));
-  return (Math.abs(G.pos-f)<tol && Math.abs(G.vel)<0.3) ? f : -99;
+  return (Math.abs(G.pos-f)<flushTol() && Math.abs(G.vel)<0.3) ? f : -99;
 }
 function toggleGate(){
   if(G.doorOpen){
@@ -277,6 +276,18 @@ function update(dt){
     }
   }
   G.pax=G.pax.filter(p=>p.state!=='gone');
+
+  /* --- hall movement: queue shuffle + storm-off walks (was in draw(), frame-rate dependent) --- */
+  const qIdx={};
+  for(const p of G.pax){
+    if(p.state==='waiting'){
+      const i2=qIdx[p.from]=(qIdx[p.from]??0); qIdx[p.from]++;
+      const targetX=SHX-58-i2*24;
+      if(p.x===0) p.x=HALLX-14;
+      p.x+=(targetX-p.x)*Math.min(1,dt*3.75);
+      if(Math.abs(targetX-p.x)>1) p.walk+=dt*12.5;
+    } else if(p.state==='storming'){ p.x-=90*dt; }
+  }
 
   /* --- spawning (paused during the ribbon-cutting; manual-only in dev) --- */
   if(G.graceT<=0&&!G.dev) G.spawnT-=dt;

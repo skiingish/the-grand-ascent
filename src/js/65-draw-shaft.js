@@ -34,7 +34,7 @@ function drawShaft(){
   });
   // doorway transfer walker
   if(G.transfer){
-    const p=G.transfer, prog=1-G.transferT/(G.transferDur||0.45);
+    const p=G.transfer, prog=1-G.transferT/(G.transferDur||XFER_BASE);
     const fromX=p.state==='boarding'?SHX-20:carX+carW/2, toX=p.state==='boarding'?carX+carW/2:SHX-26;
     drawPerson(fromX+(toX-fromX)*prog,cy-7,p,Math.floor(G.t*10));
   }

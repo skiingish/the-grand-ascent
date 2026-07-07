@@ -6,6 +6,7 @@ function glow(x,y,r,c0){
   ctx.fillStyle=g; ctx.fillRect(x-r,y-r,r*2,r*2);
 }
 function sy(worldY){ return Math.round(VH-50-(worldY-G.camY)); } // screen y of a world height
+function worldYAt(screenY){ return (VH-50-screenY)+G.camY; }      // inverse: world height under a screen y
 const BX=100, BW=400;            // building x/width
 const SHX=BX+BW-124, SHW=104;    // shaft
 const HALLX=BX+12;

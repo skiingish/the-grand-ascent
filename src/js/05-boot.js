@@ -13,3 +13,9 @@ function fit(){
   ctx.imageSmoothingEnabled=false;
 }
 addEventListener('resize',fit); fit();
+
+/* shared UI geometry & constants: single source for drawing AND hit-testing */
+const PICK_CARD={w:210,h:124,y0:140,gap:14};   // upgrade draft cards
+const DEVROW={y0:118,step:24,hw:150};          // dev upgrade-editor rows
+const MINIMAP={x:VW-26,y:64,h:VH-120};         // shaft minimap strip
+const XFER_BASE=0.45;                          // seconds per passenger through the doorway

@@ -33,7 +33,7 @@ function drawDial(){
   ctx.strokeStyle=P.brassLo; ctx.strokeRect(cx+R+17.5,cyd-13.5,13,13);
   ctx.fillStyle=P.cream; ctx.font='8px monospace'; ctx.textAlign='center'; ctx.fillText('FLUSH',cx+R+24,cyd+9);
   // fine alignment gauge
-  const off=G.pos-Math.round(G.pos), tol=0.085*(1+0.25*upLv('magnet'));
+  const off=G.pos-Math.round(G.pos), tol=flushTol();
   px(cx-R-58,cyd-11,34,10,'#141110'); ctx.strokeStyle=P.brassLo; ctx.strokeRect(cx-R-58.5,cyd-11.5,35,11);
   px(cx-R-42,cyd-10,2,8,'#4a3f2a');
   px(cx-R-58+16+Math.round(off*140),cyd-9,4,6,Math.abs(off)<tol?P.ok:P.warn);
@@ -62,7 +62,7 @@ function drawHUD(){
   ctx.fillStyle=P.cream; ctx.font='8px monospace'; ctx.textAlign='center'; ctx.fillText('STRIKES',sx+sw/2,38);
   drawDial();
   // minimap
-  const mx=VW-26,mh=VH-120,my=64;
+  const mx=MINIMAP.x,mh=MINIMAP.h,my=MINIMAP.y;
   px(mx-4,my-4,20,mh+8,'rgba(13,11,9,.8)');
   ctx.strokeStyle=P.brassLo; ctx.strokeRect(mx-4.5,my-4.5,21,mh+9);
   px(mx+5,my,2,mh,P.rail);
@@ -156,9 +156,9 @@ function drawDevMenu(){
   ctx.fillText('CLICK A ROW TO CYCLE ITS LEVEL  ·  U OR ESC TO CLOSE',VW/2,94);
   const keys2=Object.keys(UPGRADES);
   keys2.forEach((id,i)=>{
-    const u=UPGRADES[id], ry=118+i*24;
-    px(VW/2-150,ry-14,300,20,'rgba(30,25,20,.9)');
-    ctx.strokeStyle=P.brassLo; ctx.strokeRect(VW/2-150.5,ry-14.5,301,21);
+    const u=UPGRADES[id], ry=DEVROW.y0+i*DEVROW.step;
+    px(VW/2-DEVROW.hw,ry-14,DEVROW.hw*2,20,'rgba(30,25,20,.9)');
+    ctx.strokeStyle=P.brassLo; ctx.strokeRect(VW/2-DEVROW.hw-.5,ry-14.5,DEVROW.hw*2+1,21);
     ctx.fillStyle=P.brass; ctx.font='10px monospace'; ctx.textAlign='left';
     ctx.fillText(u.name,VW/2-140,ry);
     for(let k=0;k<u.max;k++){
@@ -167,5 +167,5 @@ function drawDevMenu(){
     }
   });
   ctx.fillStyle='rgba(244,232,207,.6)'; ctx.textAlign='center';
-  ctx.fillText('FLOORS '+G.floors+'  ·  BASEMENTS '+G.base+'  ·  CAP '+G.cap+'  ·  N/M SPAWN GUESTS IN PLAY',VW/2,118+keys2.length*24+6);
+  ctx.fillText('FLOORS '+G.floors+'  ·  BASEMENTS '+G.base+'  ·  CAP '+G.cap+'  ·  N/M SPAWN GUESTS IN PLAY',VW/2,DEVROW.y0+keys2.length*DEVROW.step+6);
 }

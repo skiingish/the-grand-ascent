@@ -18,6 +18,9 @@ Open `index.html` in a browser, or serve it: `node tools/serve.js` (prints local
 
 ## Development
 
+Enable the guard hook once per clone: `git config core.hooksPath tools` — it
+blocks commits where `index.html` is stale or the smoke suite fails.
+
 | File | What |
 |---|---|
 | `src/` | Game source: `template.html` + `js/*.js` modules (edit these) |
@@ -27,7 +30,7 @@ Open `index.html` in a browser, or serve it: `node tools/serve.js` (prints local
 | `CHARACTERS.md` | The 16-character cast design |
 | `PLAYTEST.md` | Bot playtest findings that shaped the difficulty |
 | `ROADMAP.md` | Parked work and ideas backlog |
-| `tools/smoke.js` | 55-check logic regression suite (`node tools/smoke.js`) |
+| `tools/smoke.js` | logic regression suite (`node tools/smoke.js`) |
 | `tools/playtest.js` | Human-like bot plays 4 skill levels (`node tools/playtest.js`) |
 | `tools/serve.js` | Zero-dependency LAN server |
 

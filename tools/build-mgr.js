@@ -1,7 +1,7 @@
 // Build the manager portrait: symmetric geometry (left half mirrored),
 // then a lighting pass (light from upper-left), then asymmetric overlays
 // (monocle + cord on his left eye, carnation on his right lapel).
-// Prints the final grid rows ready to paste into index.html.
+// Prints the final grid rows for src/js/80-screens.js (then: node tools/build.js).
 const W = 40, H = 54, C = W / 2; // mirror axis between col 19 and 20
 
 // ---- left-half geometry, 20 cols per row ('.' padding required) ----

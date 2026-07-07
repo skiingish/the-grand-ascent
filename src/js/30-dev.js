@@ -13,14 +13,9 @@ function devCycleUpgrade(id){
 function devMenuRowAt(mx,my){
   const keys2=Object.keys(UPGRADES);
   for(let i=0;i<keys2.length;i++){
-    const ry=118+i*24;
-    if(my>ry-14&&my<ry+6&&mx>VW/2-150&&mx<VW/2+150) return keys2[i];
+    const ry=DEVROW.y0+i*DEVROW.step;
+    if(my>ry-14&&my<ry+6&&mx>VW/2-DEVROW.hw&&mx<VW/2+DEVROW.hw) return keys2[i];
   }
   return null;
 }
 
-function xferTime(){
-  let t=(G.silk?0.24:0.45)*Math.pow(0.88,upLv('gate'));
-  if(Math.round(G.pos)===0) t*=Math.pow(0.78,upLv('bellboy'));   // the bellboy hustles
-  return t;
-}
