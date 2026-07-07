@@ -128,13 +128,14 @@ const S={
 
 /* ---------- state ---------- */
 const HS_KEY='grandAscentHS2';   // v2: 1920s tip scale — old dollar-era scores retired
+let wheelInv=localStorage.getItem('grandAscentWheelInv')==='1';   // scroll direction preference, persists
 let G;
 function reset(){
   G={
     state:'title', t:0,
     pos:0, vel:0,               // pos in floor units, 0 = lobby
     floors:5, cap:3, base:0, justDug:false,
-    scheme:(G&&G.scheme)||'classic',            // 'classic' | 'wheel' | 'dispatch' — survives restarts
+    scheme:(G&&G.scheme)||'manual',             // 'manual' (arrows + wheel) | 'auto' (click floors)
     autoTarget:null, dev:false, devBuf:'',
     up:{}, offers:null, pickSel:0, graceT:0, silk:false, flawless:0,
     transferDur:0.45,
@@ -362,12 +363,14 @@ addEventListener('keydown',e=>{
       G.devBuf=(G.devBuf+e.code[3]).slice(-3);
       if(G.devBuf==='DEV'){ startDev(); return; }
     }
-    if(e.code==='Digit1') G.scheme='classic';
-    else if(e.code==='Digit2') G.scheme='wheel';
-    else if(e.code==='Digit3') G.scheme='dispatch';
+    if(e.code==='KeyI'){                                 // scroll direction preference
+      wheelInv=!wheelInv; localStorage.setItem('grandAscentWheelInv',wheelInv?'1':'0'); S.ding(0); return;
+    }
+    if(e.code==='Digit1') G.scheme='manual';
+    else if(e.code==='Digit2') G.scheme='auto';
     else if(e.code!=='Space'&&e.code!=='Enter') return;
     G.state='play';
-    say('GOOD MORNING, OPERATOR'+(G.scheme!=='classic'?'  ·  '+(G.scheme==='wheel'?'WHEEL':'DISPATCH')+' CONTROLS':''),2.5);
+    say('GOOD MORNING, OPERATOR  ·  '+(G.scheme==='auto'?'AUTO':'MANUAL')+' CONTROLS',2.5);
     return;
   }
   if(G.state==='over'&&e.code==='Enter'){ reset(); G.state='play'; return; }
@@ -394,16 +397,19 @@ addEventListener('keydown',e=>{
 });
 addEventListener('keyup',e=>keys[e.code]=false);
 
-/* scroll-wheel lever: each notch is a shove; momentum still rules */
+/* scroll-wheel lever (manual mode): each notch is a shove; momentum still rules */
 cv.addEventListener('wheel',e=>{
-  if(G.scheme!=='wheel'||G.state!=='play') return;
+  if(G.scheme!=='manual'||G.state!=='play') return;
   e.preventDefault(); ac();
   if(G.doorT>0.02) return;                              // interlock holds
-  G.vel+=-Math.sign(e.deltaY)*0.38;
+  let dir=-Math.sign(e.deltaY);
+  if(wheelInv) dir=-dir;
+  G.vel+=dir*0.38;
 },{passive:false});
 
-/* mouse: menus are clickable everywhere; in dispatch scheme, floors too */
-const TITLE_SCHEME_ROWS=[[5,'classic'],[6,'wheel'],[7,'dispatch']];  // line indices in the title overlay
+/* mouse: menus are clickable everywhere; in auto mode, floors too */
+const TITLE_SCHEME_ROWS=[[5,'manual'],[6,'auto']];   // line indices in the title overlay
+const TITLE_INVERT_ROW=8;
 cv.addEventListener('mousedown',e=>{
   ac();
   const r=cv.getBoundingClientRect();
@@ -413,9 +419,13 @@ cv.addEventListener('mousedown',e=>{
       const ry=136+row*20;
       if(my>ry-13&&my<ry+5&&mx>VW/2-190&&mx<VW/2+190){
         G.scheme=scheme; G.state='play';
-        say('GOOD MORNING, OPERATOR'+(scheme!=='classic'?'  ·  '+(scheme==='wheel'?'WHEEL':'DISPATCH')+' CONTROLS':''),2.5);
+        say('GOOD MORNING, OPERATOR  ·  '+(scheme==='auto'?'AUTO':'MANUAL')+' CONTROLS',2.5);
         return;
       }
+    }
+    const iy=136+TITLE_INVERT_ROW*20;
+    if(my>iy-13&&my<iy+5&&mx>VW/2-190&&mx<VW/2+190){
+      wheelInv=!wheelInv; localStorage.setItem('grandAscentWheelInv',wheelInv?'1':'0'); S.ding(0);
     }
     return;
   }
@@ -434,7 +444,7 @@ cv.addEventListener('mousedown',e=>{
     if(hit) devCycleUpgrade(hit);
     return;
   }
-  if(G.state==='play'&&G.scheme==='dispatch'){
+  if(G.state==='play'&&G.scheme==='auto'){
     let f;
     if(mx>VW-34){                                        // minimap strip
       const mh=VH-120,my0=64,mlo=-G.base,mspan=Math.max(1,G.floors-1-mlo);
@@ -465,7 +475,7 @@ function toggleGate(){
   } else {
     const f=flushFloor();
     if(f===-99){ S.denied(); say('LINE UP THE CAR, OPERATOR!',1.2); return; }
-    G.silk=Math.abs(G.pos-f)<0.035&&G.scheme!=='dispatch'; // no silk bonus when the car parks itself
+    G.silk=Math.abs(G.pos-f)<0.035&&G.scheme!=='auto'; // no silk bonus when the car parks itself
     G.doorOpen=true; G.vel=0; G.pos=f; S.gate(true);
     if(G.silk){ S.ding(3); say('SILK STOP — SWIFT SERVICE!',1); }
     if(f>G.maxFloor) G.maxFloor=f;
@@ -485,7 +495,7 @@ function update(dt){
   const ACC=3.4*(1+0.10*upLv('speed'))*cw, MAX=2.7*(1+0.12*upLv('speed'))*cw, DRAG=0.85;
   let input=0;
   if(!locked){
-    if(G.scheme==='dispatch'){
+    if(G.scheme==='auto'){
       // autopilot: the routing IS the game — car drives itself to the clicked floor
       if(G.autoTarget!==null){
         const d=G.autoTarget-G.pos, ad=Math.abs(d), dir=Math.sign(d);
@@ -1056,7 +1066,7 @@ function drawBuilding(){
   px(BX-6,sy(G.floors*FLOOR_H)-6,2,wallBot-sy(G.floors*FLOOR_H)+6,'#2a221c');
   drawShaft();
   // dispatcher target marker: pulsing chevron beside the shaft
-  if(G.scheme==='dispatch'&&G.autoTarget!==null){
+  if(G.scheme==='auto'&&G.autoTarget!==null){
     const tym=sy(G.autoTarget*FLOOR_H), pulse=Math.floor(G.t*4)%2;
     px(SHX-12-pulse*2,tym-14,8,3,P.warn); px(SHX-10-pulse*2,tym-11,6,3,P.warn); px(SHX-8-pulse*2,tym-8,4,3,P.warn);
   }
@@ -1142,9 +1152,15 @@ function drawHUD(){
   ctx.strokeStyle=P.brassLo; ctx.strokeRect(mx-4.5,my-4.5,21,mh+9);
   px(mx+5,my,2,mh,P.rail);
   const mlo=-G.base, mspan=Math.max(1,G.floors-1-mlo);
+  const lblStep=Math.max(1,Math.ceil(9/(mh/mspan)));   // label every floor while they fit, then thin out
   for(let f=mlo;f<G.floors;f++){
     const y=my+mh-((f-mlo)/mspan)*mh;
     px(mx,y-1,12,2,f<0?'#4a3320':P.rail);
+    if(f%lblStep===0||f===G.floors-1||f===mlo){
+      ctx.font='7px monospace'; ctx.textAlign='right';
+      ctx.fillStyle=f<0?'#c98a5a':(f===0?P.brassHi:'rgba(244,232,207,.75)');
+      ctx.fillText(floorName(f),mx-3,y+2);
+    }
     const q=waitersAt(f);
     if(q.length){ const worst=Math.max(...q.map(p=>p.grump)); px(mx,y-6,Math.min(12,q.length*3),4,moodColor(worst)); }
   }
@@ -1265,9 +1281,10 @@ function draw(){
       'open new floors, each adding one improvement you choose.',
       '',
       'CHOOSE YOUR CONTROLS TO CLOCK IN:',
-      '1 — CLASSIC    arrows drive the lever, space works the gate',
-      '2 — WHEEL      scroll shoves the car, space works the gate',
-      '3 — DISPATCH   click a floor, the car drives itself',
+      '1 — MANUAL    arrows or scroll wheel drive, space works the gate',
+      '2 — AUTO      click a floor, the car drives itself',
+      '',
+      'I — SCROLL DIRECTION: '+(wheelInv?'SCROLL DOWN = UP  (INVERTED)':'SCROLL UP = UP'),
       '',
       'BEST: $'+G.hs.tips.toFixed(2)+'  ·  FLOOR '+floorName(G.hs.floor),
     ]);

@@ -233,13 +233,13 @@ fire('keydown','Escape'); fire('keyup','Escape');
 check('esc resumes', T.G.state === 'play');
 
 // dispatcher scheme: autopilot drives and opens the doors itself
-T.reset(); fire('keydown','Digit3'); fire('keyup','Digit3');
-check('dispatch scheme starts via 3', T.G.state === 'play' && T.G.scheme === 'dispatch');
+T.reset(); fire('keydown','Digit2'); fire('keyup','Digit2');
+check('auto scheme starts via 2', T.G.state === 'play' && T.G.scheme === 'auto');
 T.G.spawnT = 999; T.G.pax = [];
 T.G.autoTarget = 3;
 run(6);
 check('autopilot arrives flush and opens doors', Math.abs(T.G.pos - 3) < 0.01 && T.G.doorOpen === true);
-T.G.scheme = 'classic';
+T.G.scheme = 'manual';
 
 // DEV level: hidden D-E-V combo at the title
 T.reset();
