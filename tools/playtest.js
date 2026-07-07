@@ -71,7 +71,10 @@ function playRound(name, skill, maxMinutes=30){
       pl.target = null;
       continue;
     }
-    const ACC = 3.4*(1+0.10*((g.up && g.up.speed) || 0));
+    // MUST mirror the physics in src/js/45-update.js (ACC base, speed AND counterweight)
+    const load = g.pax.filter(q=>q.state==='riding').length/Math.max(1,g.cap);
+    const cw = 1+0.15*((g.up&&g.up.counter)||0)*load;
+    const ACC = 3.4*(1+0.10*((g.up&&g.up.speed)||0))*cw;
     tSim += DT;
     T.update(DT);
 

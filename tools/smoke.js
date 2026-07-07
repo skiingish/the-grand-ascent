@@ -3,6 +3,17 @@
 const { loadGame } = require('./harness');
 const { T, fire } = loadGame();
 const step = (dt=0.016) => { T.update(dt); };
+// fresh(): reset to a quiet, in-play state regardless of test ordering / intro latch
+const fresh = () => {
+  T.reset(); fire('keydown','Space'); fire('keyup','Space');
+  if (T.G.state === 'intro'){ fire('keydown','Space'); fire('keyup','Space'); }
+  T.G.spawnT = 999;
+};
+// mkPax(): one passenger factory so tests stop hand-building drifted object shapes
+const mkPax = (o={}) => ({ id:900, from:0, dest:1, state:'waiting', grump:0, angry:false, struck:false,
+  waitT:0, rerolled:false, patMul:1, tipMul:1, vanish:false, puffT:0, x:50, walk:0,
+  coat:['#000','#000','#000'], hat:false, lady:false, pants:false, gown:false,
+  skin:['#000','#000'], hair:'#000', bag:false, ...o });
 const run = (secs, heldKeys=[]) => {
   heldKeys.forEach(k => fire('keydown', k));
   for (let i = 0; i < secs/0.016; i++) step();
@@ -27,7 +38,7 @@ check('car coasts after release (momentum)', T.G.pos > 0 && T.G.vel > 0 && T.G.v
 
 // force a known passenger: lobby -> floor 2
 T.G.pax = []; T.G.spawnT = 999;
-T.G.pax.push({id:99, from:0, dest:2, state:'waiting', grump:0, angry:false, struck:false, x:0, walk:0, coat:'#000', hat:true, lady:false, skin:'#000'});
+T.G.pax.push(mkPax({id:99, from:0, dest:2, state:'waiting', grump:0}));
 
 // gate refuses while misaligned/moving
 T.G.pos = 1.4; T.G.vel = 1.0;
@@ -59,14 +70,14 @@ check('max floor recorded', T.G.maxFloor === 2);
 
 // grumpiness -> storm off -> strike
 fire('keydown','Space'); fire('keyup','Space'); // close
-T.G.pax = [{id:100, from:4, dest:0, state:'waiting', grump:0.99, angry:false, struck:false, x:50, walk:0, coat:'#000', hat:true, lady:false, skin:'#000'}];
+T.G.pax = [mkPax({id:100, from:4, dest:0, state:'waiting', grump:0.99})];
 run(2);
 check('impatient waiter storms off -> strike', T.G.strikes === 1);
 
 // three strikes -> game over
 T.G.pax = [
- {id:101, from:4, dest:0, state:'waiting', grump:0.99, angry:false, struck:false, x:50, walk:0, coat:'#000', hat:true, lady:false, skin:'#000'},
- {id:102, from:3, dest:0, state:'waiting', grump:0.99, angry:false, struck:false, x:50, walk:0, coat:'#000', hat:true, lady:false, skin:'#000'},
+ mkPax({id:101, from:4, dest:0, state:'waiting', grump:0.99}),
+ mkPax({id:102, from:3, dest:0, state:'waiting', grump:0.99}),
 ];
 run(2);
 check('three strikes ends the run', T.G.state === 'over' && T.G.strikes === 3);
@@ -77,7 +88,7 @@ fire('keydown','Enter'); fire('keyup','Enter');
 check('restart works', T.G.state === 'play' && T.G.strikes === 0);
 check('starts at 5 floors, cap 3', T.G.floors === 5 && T.G.cap === 3);
 T.G.delivered = 7; T.G.nextFloorAt = 8; T.G.tips = 0;
-T.G.pax = [{id:103, from:0, dest:1, state:'riding', grump:0, angry:false, struck:false, x:0, walk:0, coat:'#000', hat:true, lady:false, skin:'#000'}];
+T.G.pax = [mkPax({id:103, from:0, dest:1, state:'riding', grump:0})];
 T.G.pos = 1.0; T.G.vel = 0;
 fire('keydown','Space'); fire('keyup','Space');
 run(3);
@@ -87,14 +98,14 @@ check('upgrade installs, play resumes with grace period', T.G.state === 'play' &
 
 // commendation: 20 flawless deliveries removes a strike
 T.G.strikes = 1; T.G.flawless = 19; T.G.graceT = 0;
-T.G.pax = [{id:104, from:0, dest:1, state:'riding', grump:0, angry:false, struck:false, x:0, walk:0, coat:'#000', hat:true, lady:false, skin:'#000'}];
+T.G.pax = [mkPax({id:104, from:0, dest:1, state:'riding', grump:0})];
 T.G.pos = 1.0; T.G.vel = 0; T.G.doorOpen = false; T.G.doorT = 0; T.G.transfer = null;
 fire('keydown','Space'); fire('keyup','Space');
 run(3);
 check('commendation withdraws a strike', T.G.strikes === 0 && T.G.flawless === 0);
 
 // boarding relief: picked-up guests calm down
-T.G.pax = [{id:105, from:1, dest:0, state:'waiting', grump:0.6, angry:false, struck:false, x:200, walk:0, coat:'#000', hat:true, lady:false, skin:'#000'}];
+T.G.pax = [mkPax({id:105, from:1, dest:0, state:'waiting', grump:0.6})];
 T.G.graceT = 0; T.G.doorOpen = false; T.G.doorT = 0; T.G.pos = 1.0; T.G.vel = 0;
 fire('keydown','Space'); fire('keyup','Space');
 run(2);
@@ -102,11 +113,11 @@ check('boarding relief lowers grump', T.G.pax[0].state === 'riding' && T.G.pax[0
 
 // manager's favor: extra strike slot
 T.G.state = 'play'; T.G.up.favor = 1; T.G.strikes = 2;
-T.G.pax = [{id:106, from:1, dest:0, state:'waiting', grump:0.99, angry:false, struck:false, x:200, walk:0, coat:'#000', hat:true, lady:false, skin:'#000'}];
+T.G.pax = [mkPax({id:106, from:1, dest:0, state:'waiting', grump:0.99})];
 T.G.graceT = 0; T.G.doorOpen = false; T.G.doorT = 0; T.G.transfer = null;
 run(2);
 check("manager's favor: survives 3rd strike with 4 slots", T.G.strikes === 3 && T.G.state === 'play');
-T.G.pax = [{id:107, from:1, dest:0, state:'waiting', grump:0.99, angry:false, struck:false, x:200, walk:0, coat:'#000', hat:true, lady:false, skin:'#000'}];
+T.G.pax = [mkPax({id:107, from:1, dest:0, state:'waiting', grump:0.99})];
 run(2);
 check("manager's favor: 4th strike still ends it", T.G.state === 'over');
 fire('keydown','Enter'); fire('keyup','Enter'); // fresh run for remaining tests
@@ -114,8 +125,7 @@ T.G.spawnT = 999; T.G.pax = [];
 
 // counterweight: a loaded car accelerates faster
 function velAfterHold(counterLv, nRiders){
-  T.reset(); fire('keydown','Space'); fire('keyup','Space');
-  T.G.spawnT = 999; T.G.up.counter = counterLv; T.G.cap = 4;
+  fresh(); T.G.up.counter = counterLv; T.G.cap = 4;
   for (let i=0;i<nRiders;i++) T.G.pax.push({id:200+i, from:0, dest:2, state:'riding', grump:0, angry:false, struck:false, x:0, walk:0, coat:'#000', hat:true, lady:false, skin:'#000'});
   run(0.4, ['ArrowUp']);
   return T.G.vel;
@@ -126,8 +136,7 @@ check('counterweight: empty car unaffected', Math.abs(vEmpty - vBase) < 0.01);
 
 // lobby bellboy: boarding at the lobby is faster than upstairs
 function boardTime(floor, bellboyLv){
-  T.reset(); fire('keydown','Space'); fire('keyup','Space');
-  T.G.spawnT = 999; T.G.up.bellboy = bellboyLv;
+  fresh(); T.G.up.bellboy = bellboyLv;
   T.G.pax = [{id:300, from:floor, dest:floor===0?1:0, state:'waiting', grump:0, angry:false, struck:false, x:200, walk:0, coat:'#000', hat:true, lady:false, skin:'#000'}];
   T.G.pos = floor + 0.05; T.G.vel = 0;   // off-flush enough to avoid a Silk Stop
   fire('keydown','Space'); fire('keyup','Space');
@@ -156,8 +165,7 @@ const at20 = spawnMany(20, 400);
 check('deep tower spawns eccentrics/legends', [...at20].some(k => ['aviatrix','zora','flint','bootlegger','professor','diva','boone','baroness','colonel'].includes(k)));
 
 // named quirks: patience & tip multipliers flow through
-T.reset(); fire('keydown','Space'); fire('keyup','Space');
-T.G.spawnT = 999; T.G.graceT = 0;
+fresh(); T.G.graceT = 0;
 T.G.pax = [
   {id:400, arch:'colonel', patMul:0.4, tipMul:1, vanish:false, puffT:0, waitT:0, rerolled:false, from:1, dest:0, state:'waiting', grump:0, angry:false, struck:false, x:200, walk:0, coat:['#000','#000','#000'], hat:false, lady:false, skin:['#000','#000'], hair:'#000', bag:false},
   {id:401, arch:'diva', patMul:2.0, tipMul:3, vanish:false, puffT:0, waitT:0, rerolled:false, from:1, dest:0, state:'waiting', grump:0, angry:false, struck:false, x:220, walk:0, coat:['#000','#000','#000'], hat:false, lady:true, gown:true, skin:['#000','#000'], hair:'#000', bag:false},
@@ -166,15 +174,13 @@ run(5);
 check('patience multipliers differentiate guests', T.G.pax[1].grump > T.G.pax[0].grump*3);
 
 // il magnifico vanishes instead of striking
-T.reset(); fire('keydown','Space'); fire('keyup','Space');
-T.G.spawnT = 999; T.G.graceT = 0; T.G.strikes = 0;
+fresh(); T.G.graceT = 0; T.G.strikes = 0;
 T.G.pax = [{id:402, arch:'magnifico', patMul:1.4, tipMul:2.5, vanish:true, puffT:0, waitT:0, rerolled:false, from:1, dest:0, state:'waiting', grump:0.995, angry:false, struck:false, x:200, walk:0, coat:['#000','#000','#000'], hat:false, lady:false, skin:['#000','#000'], hair:'#000', bag:false}];
 run(2);
 check('il magnifico vanishes, no strike', T.G.strikes === 0 && T.G.pax.length === 0);
 
 // basements: car descends below the lobby only once dug
-T.reset(); fire('keydown','Space'); fire('keyup','Space');
-T.G.spawnT = 999; T.G.pax = [];
+fresh(); T.G.pax = [];
 run(1.5, ['ArrowDown']);
 check('no descent below lobby before digging', T.G.pos === 0);
 T.G.base = 2;
@@ -182,19 +188,26 @@ run(1.5, ['ArrowDown']);
 check('car descends into dug basements', T.G.pos < -0.5);
 
 // basement delivery pays hush money (1.5x)
-T.reset(); fire('keydown','Space'); fire('keyup','Space');
-T.G.spawnT = 999; T.G.base = 1; T.G.graceT = 0;
-T.G.pax = [{id:500, from:-1, dest:1, state:'riding', grump:0, angry:false, struck:false, waitT:0, patMul:1, tipMul:1, x:0, walk:0, coat:['#000','#000','#000'], hat:false, lady:false, skin:['#000','#000'], hair:'#000', bag:false}];
+fresh(); T.G.base = 1; T.G.graceT = 0;
+T.G.pax = [mkPax({id:500, from:-1, dest:1, state:'riding', grump:0})];
 T.G.pos = 1.05; T.G.vel = 0;   // off-flush: no silk bonus
 fire('keydown','Space'); fire('keyup','Space');
 run(3);
 check('hush money: basement fare pays 1.5x', T.G.tips > 0.34 && T.G.tips <= 0.375);   // quarter + hush bonus, minus a sliver of grump
 
 // gate opens flush at B1
-T.reset(); fire('keydown','Space'); fire('keyup','Space');
-T.G.spawnT = 999; T.G.base = 1; T.G.pos = -1; T.G.vel = 0;
+fresh(); T.G.base = 1; T.G.pos = -1; T.G.vel = 0;
 fire('keydown','Space'); fire('keyup','Space');
 check('gate opens flush at B1', T.G.doorOpen === true);
+
+// auto mode: a real canvas click drives the autopilot (end-to-end through the mouse handler)
+T.reset(); fire('keydown','Digit2'); fire('keyup','Digit2');   // clock in, AUTO controls
+T.G.spawnT = 999; T.G.pax = []; T.G.camY = -30;
+fire('mousedown', null, {clientX: 200, clientY: 152});         // clicks inside floor 2's room
+check('auto: canvas click targets floor 2', T.G.scheme === 'auto' && T.G.autoTarget === 2);
+run(6);
+check('auto: click-driven arrival opens doors', Math.abs(T.G.pos - 2) < 0.01 && T.G.doorOpen === true);
+T.G.scheme = 'manual';
 
 // esc pauses and resumes
 T.G.state = 'play';
@@ -228,10 +241,10 @@ T.devCycleUpgrade('cap'); T.devCycleUpgrade('cap');
 check('dev: cycling cap upgrade syncs capacity', T.G.up.cap === 2 && T.G.cap === 5);
 fire('keydown','Escape'); fire('keyup','Escape');
 check('dev: esc closes editor back to play', T.G.state === 'play');
-T.G.pax = [{id:600, from:1, dest:0, state:'waiting', grump:0.99, angry:false, struck:false, waitT:0, patMul:1, tipMul:1, x:200, walk:0, coat:['#000','#000','#000'], hat:false, lady:false, skin:['#000','#000'], hair:'#000', bag:false},
-           {id:601, from:2, dest:0, state:'waiting', grump:0.99, angry:false, struck:false, waitT:0, patMul:1, tipMul:1, x:200, walk:0, coat:['#000','#000','#000'], hat:false, lady:false, skin:['#000','#000'], hair:'#000', bag:false},
-           {id:602, from:3, dest:0, state:'waiting', grump:0.99, angry:false, struck:false, waitT:0, patMul:1, tipMul:1, x:200, walk:0, coat:['#000','#000','#000'], hat:false, lady:false, skin:['#000','#000'], hair:'#000', bag:false},
-           {id:603, from:4, dest:0, state:'waiting', grump:0.99, angry:false, struck:false, waitT:0, patMul:1, tipMul:1, x:200, walk:0, coat:['#000','#000','#000'], hat:false, lady:false, skin:['#000','#000'], hair:'#000', bag:false}];
+T.G.pax = [mkPax({id:600, from:1, dest:0, state:'waiting', grump:0.99}),
+           mkPax({id:601, from:2, dest:0, state:'waiting', grump:0.99}),
+           mkPax({id:602, from:3, dest:0, state:'waiting', grump:0.99}),
+           mkPax({id:603, from:4, dest:0, state:'waiting', grump:0.99})];
 T.G.doorOpen = false; T.G.doorT = 0; T.G.transfer = null; T.G.graceT = 0; T.G.pos = 10;
 run(3);
 check('dev: strikes never end the run', T.G.strikes >= 4 && T.G.state === 'play');

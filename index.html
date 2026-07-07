@@ -85,6 +85,11 @@ const PICK_CARD={w:210,h:124,y0:140,gap:14};   // upgrade draft cards
 const DEVROW={y0:118,step:24,hw:150};          // dev upgrade-editor rows
 const MINIMAP={x:VW-26,y:64,h:VH-120};         // shaft minimap strip
 const XFER_BASE=0.45;                          // seconds per passenger through the doorway
+const BTN={
+  manual:{x:VW/2-236,y:168,w:224,h:96},
+  auto:  {x:VW/2+12, y:168,w:224,h:96},
+  invert:{x:VW/2-170,y:288,w:340,h:26},
+};   // title-menu buttons
 
 /* ---------- palette ---------- */
 const P={
@@ -138,7 +143,9 @@ const S={
 
 /* ---------- state ---------- */
 const HS_KEY='grandAscentHS2';   // v2: 1920s tip scale — old dollar-era scores retired
-let wheelInv=localStorage.getItem('grandAscentWheelInv')==='1';   // scroll direction preference, persists
+const WHEEL_KEY='grandAscentWheelInv';
+let wheelInv=localStorage.getItem(WHEEL_KEY)==='1';   // scroll direction preference, persists
+function toggleWheelInv(){ wheelInv=!wheelInv; localStorage.setItem(WHEEL_KEY,wheelInv?'1':'0'); S.ding(0); }
 let G;
 function reset(){
   G={
@@ -366,7 +373,7 @@ function strike(p){
   }
 }
 
-/* ---------- update ---------- */
+/* ---------- input: keyboard, wheel, mouse ---------- */
 const keys={};
 addEventListener('keydown',e=>{
   if(['ArrowUp','ArrowDown','Space'].includes(e.code)) e.preventDefault();
@@ -377,7 +384,7 @@ addEventListener('keydown',e=>{
       if(G.devBuf==='DEV'){ startDev(); return; }
     }
     if(e.code==='KeyI'){                                 // scroll direction preference
-      wheelInv=!wheelInv; localStorage.setItem('grandAscentWheelInv',wheelInv?'1':'0'); S.ding(0); return;
+      toggleWheelInv(); return;
     }
     if(e.code==='Digit1') G.scheme='manual';
     else if(e.code==='Digit2') G.scheme='auto';
@@ -421,11 +428,6 @@ cv.addEventListener('wheel',e=>{
 },{passive:false});
 
 /* mouse: menus are clickable everywhere; in auto mode, floors too */
-const BTN={
-  manual:{x:VW/2-236,y:168,w:224,h:96},
-  auto:  {x:VW/2+12, y:168,w:224,h:96},
-  invert:{x:VW/2-170,y:288,w:340,h:26},
-};
 const mouse={x:-1,y:-1};
 function inBtn(b){ return mouse.x>b.x&&mouse.x<b.x+b.w&&mouse.y>b.y&&mouse.y<b.y+b.h; }
 function pickCardAt(mx,my){
@@ -465,7 +467,7 @@ cv.addEventListener('mousedown',e=>{
     if(inBtn(BTN.manual)) startShift('manual');
     else if(inBtn(BTN.auto)) startShift('auto');
     else if(inBtn(BTN.invert)){
-      wheelInv=!wheelInv; localStorage.setItem('grandAscentWheelInv',wheelInv?'1':'0'); S.ding(0);
+      toggleWheelInv();
     }
     return;
   }
@@ -497,10 +499,17 @@ cv.addEventListener('mousedown',e=>{
   }
 });
 
+/* ---------- simulation: gate, physics, patience, spawning, camera ---------- */
 function flushFloor(){
   const f=Math.round(G.pos);
   if(f<-G.base||f>=G.floors) return -99;
   return (Math.abs(G.pos-f)<flushTol() && Math.abs(G.vel)<0.3) ? f : -99;
+}
+/* all door-open bookkeeping in ONE place — auto-arrival and toggleGate share it */
+function openDoorsAt(f,silk){
+  G.pos=f; G.vel=0; G.silk=silk;
+  G.doorOpen=true; S.gate(true);
+  if(f>G.maxFloor) G.maxFloor=f;
 }
 function toggleGate(){
   if(G.doorOpen){
@@ -512,10 +521,9 @@ function toggleGate(){
   } else {
     const f=flushFloor();
     if(f===-99){ S.denied(); say('LINE UP THE CAR, OPERATOR!',1.2); return; }
-    G.silk=Math.abs(G.pos-f)<0.035&&G.scheme!=='auto'; // no silk bonus when the car parks itself
-    G.doorOpen=true; G.vel=0; G.pos=f; S.gate(true);
+    const silk=Math.abs(G.pos-f)<0.035&&G.scheme!=='auto'; // no silk bonus when the car parks itself
+    openDoorsAt(f,silk);
     if(G.silk){ S.ding(3); say('SILK STOP — SWIFT SERVICE!',1); }
-    if(f>G.maxFloor) G.maxFloor=f;
   }
 }
 
@@ -538,9 +546,8 @@ function update(dt){
         const d=G.autoTarget-G.pos, ad=Math.abs(d), dir=Math.sign(d);
         const bd=(G.vel*G.vel)/(2*ACC);
         if(ad<0.02&&Math.abs(G.vel)<0.15){
-          G.pos=G.autoTarget; G.vel=0; const f=G.autoTarget; G.autoTarget=null;
-          G.silk=false; G.doorOpen=true; G.doorT=Math.max(G.doorT,0.02); S.gate(true);   // doors open themselves
-          if(f>G.maxFloor) G.maxFloor=f;
+          const f=G.autoTarget; G.autoTarget=null;
+          openDoorsAt(f,false); G.doorT=Math.max(G.doorT,0.02);   // doors open themselves
         }
         else if(Math.sign(G.vel)===dir&&bd>=ad-0.02) input=-dir;
         else if(Math.abs(G.vel)<(ad<0.5?0.55:MAX)) input=dir;
@@ -1242,8 +1249,7 @@ function drawOverlay(title,lines){
   lines.forEach((l,i)=>ctx.fillText(l,VW/2,136+i*20));
   if(Math.floor(G.t*2)%2===0){
     ctx.fillStyle=P.brass; ctx.font='12px monospace';
-    ctx.fillText(G.state==='title'?'— PRESS 1, 2 OR 3 TO CLOCK IN —':
-                 G.state==='pause'?'— PRESS ESC TO RESUME —':'— PRESS ENTER FOR A NEW SHIFT —',VW/2,VH-66);
+    ctx.fillText(G.state==='pause'?'— PRESS ESC TO RESUME —':'— PRESS ENTER FOR A NEW SHIFT —',VW/2,VH-66);
   }
 }
 
@@ -1253,9 +1259,9 @@ function drawPickOverlay(){
   ctx.fillText('FLOOR '+floorName(G.floors-1)+' NOW OPEN',VW/2,86);
   ctx.font='11px monospace'; ctx.fillStyle=P.cream;
   ctx.fillText('THE MANAGER OFFERS AN IMPROVEMENT — CHOOSE ONE',VW/2,110);
-  const cw=210, ch=124, cy0=140;
+  const {w:cw,h:ch,y0:cy0,gap:cgap}=PICK_CARD;
   (G.offers||[]).forEach((id,i)=>{
-    const u=UPGRADES[id], x=VW/2+(i===0?-cw-14:14), sel=G.pickSel===i;
+    const u=UPGRADES[id], x=VW/2+(i===0?-cw-cgap:cgap), sel=G.pickSel===i;
     px(x,cy0,cw,ch,sel?'rgba(46,38,24,.95)':'rgba(20,17,14,.95)');
     ctx.strokeStyle=sel?P.brassHi:P.brassLo; ctx.lineWidth=sel?2:1;
     ctx.strokeRect(x+.5,cy0+.5,cw-1,ch-1);

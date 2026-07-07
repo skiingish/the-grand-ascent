@@ -20,7 +20,11 @@ function loadGame(extraExports = '') {
   });
   const listeners = {};
   global.window = global;
-  global.document = { getElementById: () => ({ getContext: () => ctxStub, style: {}, width: 0, height: 0, addEventListener() {} }) };
+  global.document = { getElementById: () => ({
+    getContext: () => ctxStub, style: {}, width: 0, height: 0,
+    addEventListener: (ev, fn) => { (listeners[ev] = listeners[ev] || []).push(fn); },
+    getBoundingClientRect: () => ({ left: 0, top: 0, width: 640, height: 400 }),
+  }) };
   global.addEventListener = (ev, fn) => { (listeners[ev] = listeners[ev] || []).push(fn); };
   global.localStorage = { _d: {}, getItem(k) { return this._d[k] || null; }, setItem(k, v) { this._d[k] = v; } };
   global.innerWidth = 1200; global.innerHeight = 800;
@@ -38,7 +42,7 @@ function loadGame(extraExports = '') {
   // indirect eval keeps declarations out of this module's scope but on globalThis via the exports line
   (0, eval)(src + '\n;globalThis.T = { get G(){return G}, set G(v){G=v}, update, draw, reset, devCycleUpgrade' + (extraExports ? ',' + extraExports : '') + ' };');
 
-  const fire = (ev, code) => listeners[ev].forEach(f => f({ code, preventDefault() {} }));
+  const fire = (ev, code, extra = {}) => (listeners[ev] || []).forEach(f => f({ code, ...extra, preventDefault() {} }));
   return { T: globalThis.T, fire, listeners };
 }
 

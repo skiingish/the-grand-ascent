@@ -110,8 +110,7 @@ function drawOverlay(title,lines){
   lines.forEach((l,i)=>ctx.fillText(l,VW/2,136+i*20));
   if(Math.floor(G.t*2)%2===0){
     ctx.fillStyle=P.brass; ctx.font='12px monospace';
-    ctx.fillText(G.state==='title'?'— PRESS 1, 2 OR 3 TO CLOCK IN —':
-                 G.state==='pause'?'— PRESS ESC TO RESUME —':'— PRESS ENTER FOR A NEW SHIFT —',VW/2,VH-66);
+    ctx.fillText(G.state==='pause'?'— PRESS ESC TO RESUME —':'— PRESS ENTER FOR A NEW SHIFT —',VW/2,VH-66);
   }
 }
 
@@ -121,9 +120,9 @@ function drawPickOverlay(){
   ctx.fillText('FLOOR '+floorName(G.floors-1)+' NOW OPEN',VW/2,86);
   ctx.font='11px monospace'; ctx.fillStyle=P.cream;
   ctx.fillText('THE MANAGER OFFERS AN IMPROVEMENT — CHOOSE ONE',VW/2,110);
-  const cw=210, ch=124, cy0=140;
+  const {w:cw,h:ch,y0:cy0,gap:cgap}=PICK_CARD;
   (G.offers||[]).forEach((id,i)=>{
-    const u=UPGRADES[id], x=VW/2+(i===0?-cw-14:14), sel=G.pickSel===i;
+    const u=UPGRADES[id], x=VW/2+(i===0?-cw-cgap:cgap), sel=G.pickSel===i;
     px(x,cy0,cw,ch,sel?'rgba(46,38,24,.95)':'rgba(20,17,14,.95)');
     ctx.strokeStyle=sel?P.brassHi:P.brassLo; ctx.lineWidth=sel?2:1;
     ctx.strokeRect(x+.5,cy0+.5,cw-1,ch-1);

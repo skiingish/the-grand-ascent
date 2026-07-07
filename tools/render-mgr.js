@@ -49,6 +49,6 @@ const png = Buffer.concat([
   chunk('IDAT', zlib.deflateSync(raw)),
   chunk('IEND', Buffer.alloc(0)),
 ]);
-const out = process.argv[2] || 'C:/Users/seany/AppData/Local/Temp/claude/C--Users-seany-Projects-GameDev/78f0bf01-559e-4e64-844c-fb364cce97be/scratchpad/manager.png';
+const out = process.argv[2] || (fs.mkdirSync(path.join(__dirname,'..','dist'),{recursive:true}), path.join(__dirname,'..','dist','manager.png'));
 fs.writeFileSync(out, png);
 console.log('wrote', out, W + 'x' + H);

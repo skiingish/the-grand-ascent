@@ -34,7 +34,7 @@ node tools/playtest.js    # 4 simulated skill levels; run 2-3 samples (RNG varia
 | Lever | Location | Current | Effect |
 |---|---|---|---|
 | Lift physics | `ACC=3.4..., MAX=2.7..., DRAG=0.85` | — | The feel. Change with extreme care |
-| Flush tolerance | `0.085*(1+0.25*upLv('magnet'))` (2 places) | ±0.085 floors | How forgiving stopping is |
+| Flush tolerance | `flushTol()` in 25-upgrades.js | ±0.085 floors | How forgiving stopping is |
 | Silk Stop window | `Math.abs(G.pos-f)<0.035` | ±0.035 | Perfect-stop reward threshold |
 | Silk bonus | `tip*=1.25` and `0.24` transfer | +25% tips, ~2× boarding | What precision pays |
 | Transfer time | `xferTime()` | 0.45s base | Dwell cost per passenger |

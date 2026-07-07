@@ -1,6 +1,8 @@
 /* ---------- state ---------- */
 const HS_KEY='grandAscentHS2';   // v2: 1920s tip scale — old dollar-era scores retired
-let wheelInv=localStorage.getItem('grandAscentWheelInv')==='1';   // scroll direction preference, persists
+const WHEEL_KEY='grandAscentWheelInv';
+let wheelInv=localStorage.getItem(WHEEL_KEY)==='1';   // scroll direction preference, persists
+function toggleWheelInv(){ wheelInv=!wheelInv; localStorage.setItem(WHEEL_KEY,wheelInv?'1':'0'); S.ding(0); }
 let G;
 function reset(){
   G={
