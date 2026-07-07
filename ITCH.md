@@ -10,7 +10,7 @@ Everything to fill in at itch.io → Dashboard → Create new project.
 |---|---|
 | Title | **The Grand Ascent** |
 | Project URL | `grand-ascent` (i.e. skiingish.itch.io/grand-ascent) |
-| Short description / tagline | *You are the lift. The lift is you. A 1920s hotel lift-operator arcade game.* |
+| Short description / tagline | *You are the lift. The lift is you. A 1920s lift-operator arcade game.* |
 | Classification | Game |
 | Kind of project | **HTML** |
 | Release status | Released (or "In development" if you want feedback framing) |
@@ -46,9 +46,9 @@ Everything to fill in at itch.io → Dashboard → Create new project.
 
 **THE GRAND ASCENT**
 
-*New York, 1926. The Hotel Meridian needs a lift operator. The last one walked out. You'll find out why.*
+*New York, 1926. The Meridian Building needs a lift operator. The last one walked out. You'll find out why.*
 
-You work the brass lever of a hotel lift with real momentum — ease it flush with the
+You work the brass lever of a lift with real momentum — ease it flush with the
 floor, throw the gate, and get the guests where they're going before they boil over.
 Three walk-outs and the management lets you go.
 

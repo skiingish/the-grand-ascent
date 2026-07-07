@@ -176,6 +176,7 @@ function playRound2(name, skill, maxMinutes=30){
   T.reset();
   const g = T.G;
   fire('keydown','Space'); fire('keyup','Space');
+  if (g.state === 'intro'){ fire('keydown','Space'); fire('keyup','Space'); }   // dismiss the manager's welcome
   const pl = makePlayer(skill);
   const stats = { name, deniedOpens:0, overshoots:0, stops:0, alignTime:0, alignSamples:0,
     strikeLog:[], approachStart:0, approaching:false, waitStorms:0, rideStorms:0 };

@@ -42,7 +42,9 @@ const run = (secs, heldKeys=[]) => {
 let fails = 0;
 const check = (name, cond) => { console.log((cond?'PASS':'FAIL') + '  ' + name); if(!cond) fails++; };
 
-// start game
+// start game: title -> manager intro -> play
+fire('keydown','Space'); fire('keyup','Space');
+check('title leads to manager intro', T.G.state==='intro');
 fire('keydown','Space'); fire('keyup','Space');
 check('game starts', T.G.state==='play');
 

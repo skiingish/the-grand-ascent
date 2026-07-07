@@ -1,6 +1,6 @@
 # The Grand Ascent
 
-*You are the lift. The lift is you.* A 1920s Art-Deco hotel lift-operator arcade game —
+*You are the lift. The lift is you.* A 1920s Art-Deco lift-operator arcade game —
 one self-contained HTML file, no build step, no dependencies.
 
 Deliver guests before they boil over. Three walk-outs and the management lets you go.

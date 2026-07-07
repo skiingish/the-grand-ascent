@@ -51,7 +51,7 @@
 </style>
 </head>
 <body>
-  <header><h1>THE GRAND ASCENT</h1><small>hotel lift operator · est. 1926</small></header>
+  <header><h1>THE GRAND ASCENT</h1><small>lift operator · est. 1926</small></header>
   <div class="marquee"><canvas id="cv"></canvas></div>
   <div class="legend">
     <span><b>&uarr;&darr;</b>lever</span>
@@ -232,7 +232,7 @@ const ARCH={
   baroness: {tier:3,w:2,pat:1.2, tip:2.2,rule:'audit',    lady:true},
   colonel:  {tier:3,w:2,pat:0.4, tip:1.0,rule:'longhaul', lady:false, needs:7},
   gloria:   {tier:9,w:1,pat:1.5, tip:4.0,rule:'penthouse',lady:true, gown:true, celeb:true, announce:'GLORIA DELACROIX HAS ARRIVED'},
-  magnifico:{tier:9,w:1,pat:1.4, tip:2.5,rule:'cross',    lady:false, celeb:true, vanish:true, announce:'IL MAGNIFICO GRACES THE HOTEL'},
+  magnifico:{tier:9,w:1,pat:1.4, tip:2.5,rule:'cross',    lady:false, celeb:true, vanish:true, announce:'IL MAGNIFICO GRACES THE BUILDING'},
   duchess:  {tier:9,w:1,pat:0.9, tip:2.0,rule:'promenade',lady:true, celeb:true, announce:'THE DUCHESS OF MARLOW & BIJOU'},
 };
 function pickWeighted(keys){
@@ -369,10 +369,10 @@ addEventListener('keydown',e=>{
     if(e.code==='Digit1') G.scheme='manual';
     else if(e.code==='Digit2') G.scheme='auto';
     else if(e.code!=='Space'&&e.code!=='Enter') return;
-    G.state='play';
-    say('GOOD MORNING, OPERATOR  ·  '+(G.scheme==='auto'?'AUTO':'MANUAL')+' CONTROLS',2.5);
+    startShift(G.scheme);
     return;
   }
+  if(G.state==='intro'){ introSeen=true; beginPlay(); return; }   // any key clocks in
   if(G.state==='over'&&e.code==='Enter'){ reset(); G.state='play'; return; }
   if(e.code==='Escape'){
     if(G.state==='play'){ G.state='pause'; for(const k in keys) keys[k]=false; return; }
@@ -433,9 +433,15 @@ cv.addEventListener('mousemove',e=>{
   else if(G.state==='play'&&G.scheme==='auto') ptr=true;
   cv.style.cursor=ptr?'pointer':'default';
 });
+let introSeen=false;
+function beginPlay(){
+  G.state='play';
+  say('GOOD MORNING, OPERATOR  ·  '+(G.scheme==='auto'?'AUTO':'MANUAL')+' CONTROLS',2.5);
+}
 function startShift(scheme){
-  G.scheme=scheme; G.state='play';
-  say('GOOD MORNING, OPERATOR  ·  '+(scheme==='auto'?'AUTO':'MANUAL')+' CONTROLS',2.5);
+  G.scheme=scheme;
+  if(introSeen) beginPlay();
+  else G.state='intro';
 }
 cv.addEventListener('mousedown',e=>{
   ac();
@@ -450,6 +456,7 @@ cv.addEventListener('mousedown',e=>{
     }
     return;
   }
+  if(G.state==='intro'){ introSeen=true; beginPlay(); return; }
   if(G.state==='over'){ reset(); G.state='play'; return; }
   if(G.state==='pause'){ G.state='play'; return; }
   if(G.state==='pick'){
@@ -1273,6 +1280,113 @@ function drawDevMenu(){
   ctx.fillText('FLOORS '+G.floors+'  ·  BASEMENTS '+G.base+'  ·  CAP '+G.cap+'  ·  N/M SPAWN GUESTS IN PLAY',VW/2,118+keys2.length*24+6);
 }
 
+/* ---------- the manager: hand-set pixel portrait, 38x46 grid ---------- */
+const MGR_PAL={
+  k:'#14100c', h:'#1d1814', i:'#3a3430', s:'#e8b98a', S:'#c68f5f', d:'#a3714a',
+  e:'#f4e8cf', p:'#1d1814', b:'#2a2018', m:'#2a2018', w:'#f4e8cf', W:'#d8cbb0',
+  c:'#33383f', C:'#262a30', l:'#4a515c', v:'#5c2430', V:'#4a1c26', t:'#8c1f2e',
+  g:'#c9a227', G:'#7495b3', f:'#d5533c',
+};
+const MGR=[
+'..............kkkkkkkkkk..............',
+'...........kkkhhhhhhhhhhkkk...........',
+'..........khhhhhhhhhhhhhhhhk..........',
+'.........khhihhhhhhhhhhhhhhhk.........',
+'.........khiihhhhhhhhhhhhhhhk.........',
+'........khhiihhhhhhhhhhhhhhhhk........',
+'........khhihhhhhhhhhhhhhhhhhk........',
+'........khhhhhhhhhhhhhhhhhhhhk........',
+'........khssssssssssssssssSShk........',
+'........kssssssssssssssssssSSk........',
+'........kssssssssssssssssssSSk........',
+'........ksbbbbbsssssssbbbbbsSk........',
+'........ksbbbbbsssssssbbbbbsSk........',
+'........kssssssssssssssgggssSk........',
+'........kskeeppkssssssgGGGGgsk........',
+'........kskeeppkssssssgGGGGgsk........',
+'........ksssssssssssssgGGGGgsk........',
+'........kssssssSSssssssgggsgsk........',
+'........kssssssSSssssssssssgsk........',
+'........ksssssSSSSssssssssgssk........',
+'........ksssssSddSssssssssgssk........',
+'........kssssssssssssssssgsssk........',
+'........ksmmmmmmmmsmmmmmmmmssk........',
+'.......ksmmmmmmmmmsmmmmmmmmmsSk.......',
+'.......ksmmksssssssssssskmmmsSk.......',
+'........kssskddddddddddksssssk........',
+'........kSssssssssssssssssssSk........',
+'........kSSssssssssssssssssSSk........',
+'.........kSSssssssssssssssSSk.........',
+'..........kkSSSSssssssSSSSkk..........',
+'......kkkkkwwkkSSSSSSkkwwkkkkk........',
+'....kkcccckwwwkkkkkkkkwwwkccckk.......',
+'...kccccccCwwwwkttttkwwwwCccccck......',
+'..kccccccclkwwkttttttkwwklccccccck....',
+'..kccccccclkkvvkttttkvvkklccccccck....',
+'.kcccccccclkvvvvkttkvvvvklcccccccck...',
+'.kccccfccclvvvvvkttkvvvvvlcccccccck...',
+'.kcccfffcclvvvvvktgkvvvvvlcccccccck...',
+'.kccccfccclvvvvvkttkvvvvvlcccccccck...',
+'kccccccccclvvvggkttkggvvvlccccccccck..',
+'kccccccccclvvgvvkttkvvgvvlccccccccck..',
+'kcccccccccVvgvvvkttkvvvgvVccccccccck..',
+'kcccccccccVvvvvvkttkvvvvgVccccccccck..',
+'kcccccccccVvvvvkttttkvvvvVccccccccck..',
+'kccccccccCVvvvvkttttkvvvvVCcccccccck..',
+'kccccccccCVvvvkttttttkvvvVCcccccccck..',
+];
+function drawManager(x,y,s){
+  for(let r=0;r<MGR.length;r++){
+    const row=MGR[r];
+    for(let c=0;c<row.length;c++){
+      const col=MGR_PAL[row[c]];
+      if(col) px(x+c*s,y+r*s,s,s,col);
+    }
+  }
+}
+
+function drawIntro(){
+  ctx.fillStyle='rgba(13,11,9,.94)'; ctx.fillRect(0,0,VW,VH);
+  ctx.strokeStyle=P.brass; ctx.lineWidth=2; ctx.strokeRect(36,26,VW-72,VH-52);
+  ctx.strokeStyle=P.brassLo; ctx.lineWidth=1; ctx.strokeRect(42,32,VW-84,VH-64);
+  // portrait in a gilded frame
+  const fx=76,fy=88,fw=146,fh=172;
+  px(fx-6,fy-6,fw+12,fh+12,P.brassLo); px(fx-4,fy-4,fw+8,fh+8,P.brass);
+  px(fx-1,fy-1,fw+2,fh+2,P.brassDk); px(fx,fy,fw,fh,'#181310');
+  const gg=ctx.createLinearGradient(0,fy,0,fy+fh);
+  gg.addColorStop(0,'#241d16'); gg.addColorStop(1,'#12100c');
+  ctx.fillStyle=gg; ctx.fillRect(fx,fy,fw,fh);
+  glow(fx+fw/2,fy+40,60,'rgba(201,162,39,.06)');
+  drawManager(fx+(fw-38*3)/2,fy+14,3);
+  // nameplate
+  px(fx+fw/2-44,fy+fh+8,88,16,P.brass); px(fx+fw/2-42,fy+fh+10,84,12,'#221c14');
+  ctx.fillStyle=P.brassHi; ctx.font='9px monospace'; ctx.textAlign='center';
+  ctx.fillText('THE MANAGER',fx+fw/2,fy+fh+19);
+  // his welcome
+  const tx=270;
+  ctx.fillStyle=P.brassHi; ctx.font='20px Limelight, monospace'; ctx.textAlign='left';
+  ctx.fillText('YOUR EMPLOYER',tx,104);
+  px(tx,114,150,1,P.brassLo);
+  ctx.font='11px monospace'; ctx.fillStyle=P.cream;
+  [
+    '"So. You\'re the new operator."',
+    '',
+    '"The last one walked out mid-shift.',
+    ' You\'ll find out why soon enough."',
+    '',
+    '"Rules of this building: nobody waits.',
+    ' Three storm-offs and you\'re finished.',
+    ' Guests tip in honest coin — earn well',
+    ' and we build higher."',
+    '',
+    '"Your car awaits. Don\'t embarrass me."',
+  ].forEach((l,i)=>ctx.fillText(l,tx,132+i*17));
+  if(Math.floor(G.t*2)%2===0){
+    ctx.fillStyle=P.brass; ctx.font='11px monospace'; ctx.textAlign='center';
+    ctx.fillText('— CLICK OR PRESS ANY KEY TO CLOCK IN —',VW/2,VH-52);
+  }
+}
+
 function drawMenuButton(b,hover,title,lines){
   px(b.x,b.y,b.w,b.h,hover?'rgba(46,38,24,.96)':'rgba(20,17,14,.94)');
   ctx.strokeStyle=hover?P.brassHi:P.brassLo; ctx.lineWidth=hover?2:1;
@@ -1337,6 +1451,7 @@ function draw(){
     ]);
   }
   else if(G.state==='title'){ drawTitle(); }
+  else if(G.state==='intro'){ drawIntro(); }
   else if(G.state==='over'){
     drawOverlay('SHIFT TERMINATED',[
       'The revolving door hits you on the way out.',
