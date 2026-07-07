@@ -98,7 +98,7 @@ T.G.pax = [
 ];
 run(2);
 check('three strikes ends the run', T.G.state === 'over' && T.G.strikes === 3);
-check('high score saved', JSON.parse(localStorage.getItem('grandAscentHS')).floor === 2);
+check('high score saved', JSON.parse(localStorage.getItem('grandAscentHS2')).floor === 2);
 
 // floor growth + upgrade draft
 fire('keydown','Enter'); fire('keyup','Enter');
@@ -216,7 +216,7 @@ T.G.pax = [{id:500, from:-1, dest:1, state:'riding', grump:0, angry:false, struc
 T.G.pos = 1.05; T.G.vel = 0;   // off-flush: no silk bonus
 fire('keydown','Space'); fire('keyup','Space');
 run(3);
-check('hush money: basement fare pays 1.5x', T.G.tips > 7.2 && T.G.tips <= 7.5);   // ~7.44: tiny grump accrues during the door cycle
+check('hush money: basement fare pays 1.5x', T.G.tips > 0.34 && T.G.tips <= 0.375);   // quarter + hush bonus, minus a sliver of grump
 
 // gate opens flush at B1
 T.reset(); fire('keydown','Space'); fire('keyup','Space');

@@ -127,7 +127,7 @@ const S={
 };
 
 /* ---------- state ---------- */
-const HS_KEY='grandAscentHS';
+const HS_KEY='grandAscentHS2';   // v2: 1920s tip scale — old dollar-era scores retired
 let G;
 function reset(){
   G={
@@ -345,7 +345,7 @@ function strike(p){
   say(G.strikes>=maxStrikes()?'THE MANAGEMENT HAS SEEN ENOUGH':'A GUEST STORMS OFF!  ('+G.strikes+'/'+maxStrikes()+')');
   if(G.strikes>=maxStrikes()){
     G.state='over';
-    if(G.maxFloor>G.hs.floor||(G.maxFloor===G.hs.floor&&G.tips>G.hs.tips)){
+    if(G.tips>G.hs.tips||(G.tips===G.hs.tips&&G.maxFloor>G.hs.floor)){
       G.hs={floor:G.maxFloor,tips:G.tips};
       localStorage.setItem(HS_KEY,JSON.stringify(G.hs));
     }
@@ -534,7 +534,8 @@ function update(dt){
         if(p.state==='exiting'){
           p.state='gone';
           if(!p.angry){
-            let tip=(0.5+4.5*Math.pow(Math.max(0,1-p.grump),1.4))*(1+0.15*upLv('tipjar'))*(p.tipMul||1);
+            // 1926 rates: a nickel from a sour guest, a quarter from a delighted one
+            let tip=(0.05+0.20*Math.pow(Math.max(0,1-p.grump),1.4))*(1+0.15*upLv('tipjar'))*(p.tipMul||1);
             if(G.silk) tip*=1.25;                       // silk stops pay better
             if(p.from<0||p.dest<0) tip*=1.5;            // hush money from below the street
             G.tips+=tip; G.delivered++; S.coin();
@@ -543,7 +544,7 @@ function update(dt){
             if(G.flawless>=20){
               G.flawless=0;
               if(G.strikes>0){ G.strikes--; S.fanfare(); say('COMMENDATION! THE MANAGER WITHDRAWS A STRIKE',3); }
-              else { G.tips+=5; S.ding(1); say('COMMENDATION! A CRISP $5 FROM THE MANAGER',3); }
+              else { G.tips+=1; S.ding(1); say('COMMENDATION! A CRISP DOLLAR FROM THE MANAGER',3); }
             }
             /* the tower grows — pause for an upgrade draft */
             if(G.delivered>=G.nextFloorAt){
@@ -1124,7 +1125,7 @@ function drawHUD(){
   ctx.fillText('TIPS  $'+G.tips.toFixed(2),16,24);
   ctx.fillStyle=P.cream;
   ctx.fillText('CAR   '+riders().length+'/'+G.cap,16,39);
-  ctx.fillText('BEST  FL '+floorName(G.maxFloor),16,54);
+  ctx.fillText('BEST  $'+G.hs.tips.toFixed(2),16,54);
   // strikes (lamp count grows with Manager's Favor)
   const ns=maxStrikes(), sw=ns*24+16, sx=VW-8-sw;
   plaque(sx,8,sw,34);
@@ -1268,17 +1269,17 @@ function draw(){
       '2 — WHEEL      scroll shoves the car, space works the gate',
       '3 — DISPATCH   click a floor, the car drives itself',
       '',
-      'BEST: FLOOR '+floorName(G.hs.floor)+'  ·  $'+G.hs.tips.toFixed(2),
+      'BEST: $'+G.hs.tips.toFixed(2)+'  ·  FLOOR '+floorName(G.hs.floor),
     ]);
   } else if(G.state==='over'){
     drawOverlay('SHIFT TERMINATED',[
       'The revolving door hits you on the way out.',
       '',
-      'HIGHEST FLOOR REACHED:  '+floorName(G.maxFloor),
       'TIPS EARNED:  $'+G.tips.toFixed(2),
+      'HIGHEST FLOOR REACHED:  '+floorName(G.maxFloor),
       'GUESTS DELIVERED:  '+G.delivered,
       '',
-      'HOUSE BEST: FLOOR '+floorName(G.hs.floor)+'  ·  $'+G.hs.tips.toFixed(2),
+      'HOUSE BEST: $'+G.hs.tips.toFixed(2)+'  ·  FLOOR '+floorName(G.hs.floor),
     ]);
   }
 }
