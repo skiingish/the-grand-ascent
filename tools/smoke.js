@@ -81,7 +81,7 @@ T.G.pax = [
 ];
 run(2);
 check('three strikes ends the run', T.G.state === 'over' && T.G.strikes === 3);
-check('high score saved', JSON.parse(localStorage.getItem('grandAscentHS2')).floor === 2);
+check('high score saved', JSON.parse(localStorage.getItem('grandAscentHS2')).floor === 2);   // key mirrors HS_KEY in src/js/20-state.js
 
 // floor growth + upgrade draft
 fire('keydown','Enter'); fire('keyup','Enter');
@@ -126,7 +126,7 @@ T.G.spawnT = 999; T.G.pax = [];
 // counterweight: a loaded car accelerates faster
 function velAfterHold(counterLv, nRiders){
   fresh(); T.G.up.counter = counterLv; T.G.cap = 4;
-  for (let i=0;i<nRiders;i++) T.G.pax.push({id:200+i, from:0, dest:2, state:'riding', grump:0, angry:false, struck:false, x:0, walk:0, coat:'#000', hat:true, lady:false, skin:'#000'});
+  for (let i=0;i<nRiders;i++) T.G.pax.push(mkPax({id:200+i, dest:2, state:'riding', x:0}));
   run(0.4, ['ArrowUp']);
   return T.G.vel;
 }
@@ -137,7 +137,7 @@ check('counterweight: empty car unaffected', Math.abs(vEmpty - vBase) < 0.01);
 // lobby bellboy: boarding at the lobby is faster than upstairs
 function boardTime(floor, bellboyLv){
   fresh(); T.G.up.bellboy = bellboyLv;
-  T.G.pax = [{id:300, from:floor, dest:floor===0?1:0, state:'waiting', grump:0, angry:false, struck:false, x:200, walk:0, coat:'#000', hat:true, lady:false, skin:'#000'}];
+  T.G.pax = [mkPax({id:300, from:floor, dest:floor===0?1:0, x:200})];
   T.G.pos = floor + 0.05; T.G.vel = 0;   // off-flush enough to avoid a Silk Stop
   fire('keydown','Space'); fire('keyup','Space');
   let t = 0;
@@ -167,15 +167,15 @@ check('deep tower spawns eccentrics/legends', [...at20].some(k => ['aviatrix','z
 // named quirks: patience & tip multipliers flow through
 fresh(); T.G.graceT = 0;
 T.G.pax = [
-  {id:400, arch:'colonel', patMul:0.4, tipMul:1, vanish:false, puffT:0, waitT:0, rerolled:false, from:1, dest:0, state:'waiting', grump:0, angry:false, struck:false, x:200, walk:0, coat:['#000','#000','#000'], hat:false, lady:false, skin:['#000','#000'], hair:'#000', bag:false},
-  {id:401, arch:'diva', patMul:2.0, tipMul:3, vanish:false, puffT:0, waitT:0, rerolled:false, from:1, dest:0, state:'waiting', grump:0, angry:false, struck:false, x:220, walk:0, coat:['#000','#000','#000'], hat:false, lady:true, gown:true, skin:['#000','#000'], hair:'#000', bag:false},
+  mkPax({id:400, arch:'colonel', patMul:0.4, tipMul:1, vanish:false, from:1, dest:0, grump:0, x:200}),
+  mkPax({id:401, arch:'diva', patMul:2.0, tipMul:3, vanish:false, from:1, dest:0, grump:0, x:200}),
 ];
 run(5);
 check('patience multipliers differentiate guests', T.G.pax[1].grump > T.G.pax[0].grump*3);
 
 // il magnifico vanishes instead of striking
 fresh(); T.G.graceT = 0; T.G.strikes = 0;
-T.G.pax = [{id:402, arch:'magnifico', patMul:1.4, tipMul:2.5, vanish:true, puffT:0, waitT:0, rerolled:false, from:1, dest:0, state:'waiting', grump:0.995, angry:false, struck:false, x:200, walk:0, coat:['#000','#000','#000'], hat:false, lady:false, skin:['#000','#000'], hair:'#000', bag:false}];
+T.G.pax = [mkPax({id:402, arch:'magnifico', patMul:1.4, tipMul:2.5, vanish:true, from:1, dest:0, grump:0.995, x:200})];
 run(2);
 check('il magnifico vanishes, no strike', T.G.strikes === 0 && T.G.pax.length === 0);
 

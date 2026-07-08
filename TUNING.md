@@ -1,11 +1,11 @@
 # Tuning Levers — where every knob lives and how to pull it
 
-All gameplay constants live in `src/js/` (physics + patience in `40-input-update.js`,
+All gameplay constants live in `src/js/` (physics + patience in `45-update.js`,
 spawn + tips in `35-passengers.js`, upgrades in `25-upgrades.js`, cast in
 `35-passengers.js`). After ANY change: `node tools/build.js`, then run:
 
 ```
-node tools/smoke.js       # 28+ logic checks, must be all green
+node tools/smoke.js       # logic regression suite, must be all green
 node tools/playtest.js    # 4 simulated skill levels; run 2-3 samples (RNG variance is real)
 ```
 
